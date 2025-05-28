@@ -4,7 +4,7 @@ project_name: clix
 release:
   github:
     owner: clix-so
-    name: clix-cli
+    name: homebrew-clix-cli
 builds:
   - id: clix
     main: main.go
