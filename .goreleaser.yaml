@@ -27,10 +27,13 @@ archives:
 
 brews:
   - name: clix
+    github:
+      owner: clix-so
+      name: homebrew-clix-cli
     commit_author:
       name: github-actions[bot]
       email: github-actions[bot]@users.noreply.github.com
-    homepage: "https://github.com/clix-so/clix-cli"
+    homepage: "https://github.com/clix-so/homebrew-clix-cli"
     description: "A CLI tool for ..."
     test: |
       system "#{bin}/clix", "--version"

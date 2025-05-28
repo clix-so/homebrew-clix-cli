@@ -7,7 +7,7 @@ A command-line tool for integrating and managing the Clix SDK in your mobile pro
 ### Install via Homebrew (Recommended)
 ```sh
 brew tap clix-so/clix-cli
-brew install clix
+brew install clix-so/clix-cli/clix
 ```
 
 ### Install via Source
