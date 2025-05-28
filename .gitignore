@@ -1,0 +1,44 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.cov
+
+# Go workspace file
+*.code-workspace
+
+# Dependency directories (remove the comment below if you use vendoring)
+/vendor/
+
+# Go build artifacts
+/build/
+/bin/
+
+# IDE/editor directories and files
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Go modules
+
+# Logs
+*.log
+
+# Test cache
+go-test-cache/
+
+# Homebrew formulae (if generated locally)
+*.bottle.*.tar.gz
+
+# GoReleaser dist
+/dist/
+
+# GitHub Actions
+.github/workflows/*.log
