@@ -27,6 +27,9 @@ archives:
 
 brews:
   - name: clix
+    repository:
+      owner: clix-so
+      name: homebrew-clix-cli
     commit_author:
       name: github-actions[bot]
       email: github-actions[bot]@users.noreply.github.com
