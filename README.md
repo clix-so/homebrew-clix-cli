@@ -18,7 +18,6 @@ make install
 ```
 
 ## Requirements
-- Go 1.18 or newer
 - For iOS: Xcode project in the current directory
 
 
@@ -64,6 +63,4 @@ MIT
 ---
 
 > **Note:**
-> - Android commands are not yet implemented.
-> - Uninstall commands are placeholders and will be available in a future release.
 > - For any issues or feature requests, please open an issue on GitHub.
