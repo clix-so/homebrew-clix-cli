@@ -16,7 +16,7 @@ func InstallClixIOS(apiKey, projectID string) error {
 	if _, err := os.Stat(appPath); err != nil {
 		// If AppDelegate.swift not found, create one and return its result
 		fmt.Println("AppDelegate.swift not found, creating one...")
-		return createAppDelegate(apiKey)
+		return createAppDelegate(apiKey, projectID)
 	}
 
 	content, err := os.ReadFile(appPath)
@@ -49,10 +49,11 @@ func InstallClixIOS(apiKey, projectID string) error {
 			"return true",
 			fmt.Sprintf(`
         Clix.initialize(
-			apiKey: "%s"
+			apiKey: "%s",
+			projectId: "%s"
 		)
 
-        return true`, apiKey),
+        return true`, apiKey, projectID),
 			1)
 	}
 
@@ -73,7 +74,7 @@ func InstallClixIOS(apiKey, projectID string) error {
 	return nil
 }
 
-func createAppDelegate(apiKey string) error {
+func createAppDelegate(projectId, apiKey string) error {
 	template := fmt.Sprintf(`import UIKit
 import Clix
 import Firebase
@@ -83,13 +84,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
 
         Clix.initialize(
-			apiKey: "%s"
+			apiKey: "%s",
+			projectId: "%s"
 		)
 
         return true
     }
 }
-`, apiKey)
+`, apiKey, projectId)
 
 	appPath, err := FindAppPath()
 	if err != nil {
