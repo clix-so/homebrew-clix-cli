@@ -39,14 +39,29 @@ func AddClixInitializationToApplication(projectRoot, apiKey, projectID string) b
 				content = strings.Join(lines, "\n")
 			}
 			// Insert initialization in onCreate
-			initBlock := `override fun onCreate() {\n        super.onCreate()\n        // Project ID: ` + projectID + `\n        lifecycleScope.launch {\n            try {\n                Clix.initialize(\n                    ClixConfig(apiKey = \"` + apiKey + `\", endpoint = \"https://api.clix.so\", logLevel = ClixLogLevel.INFO)\n                )\n            } catch (e: Exception) {\n                // Handle initialization failure\n            }\n        }\n    }`
+			initBlock := `override fun onCreate() {
+        super.onCreate()
+        // Project ID: ` + projectID + `
+        lifecycleScope.launch {
+            try {
+                val config =
+            ClixConfig(
+                projectId = "` + projectID + `",
+                apiKey = "` + apiKey + `",
+            )
+        Clix.initialize(this, config)
+            } catch (e: Exception) {
+                // Handle initialization failure
+            }
+        }
+    }`
 			if strings.Contains(content, "override fun onCreate()") {
 				// Replace existing onCreate with template
 				lines := strings.Split(content, "\n")
 				for i, line := range lines {
 					if strings.Contains(line, "override fun onCreate()") {
 						// Replace block (simple heuristic: next 2~20 lines)
-						end := i+1
+						end := i + 1
 						for ; end < len(lines) && end-i < 20; end++ {
 							if strings.Contains(lines[end], "}") {
 								break
