@@ -81,8 +81,11 @@ func InstallClixIOS(projectID, apiKey string) error {
 	// Report any errors that occurred during installation
 	if len(installErrors) > 0 {
 		fmt.Println("\n⚠️ Some issues occurred during installation:")
-		for _, err := range installErrors {
-			fmt.Println(" -", err)
+		// Ensure installErrors is not nil before ranging over it
+		if installErrors != nil {
+			for _, err := range installErrors {
+				fmt.Println(" -", err)
+			}
 		}
 		fmt.Println("\nPlease address these issues manually or contact support.")
 		return fmt.Errorf("installation completed with some issues")
@@ -96,11 +99,12 @@ func UpdateNotificationServiceExtension(projectID string) []string {
 	var errors []string
 
 	// Find the project path
-	projectPath, _, err := checkXcodeProject()
+	projectPath, err := FindAppPath()
 	if err != nil {
 		errors = append(errors, fmt.Sprintf("Failed to find Xcode project: %v", err))
 		return errors
 	}
+	// We don't need to extract project name here as it's not used in this function
 
 	// Assume NotificationServiceExtension is already added in Xcode
 	// Get the directory one level above the project root

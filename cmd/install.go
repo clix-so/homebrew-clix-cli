@@ -51,16 +51,20 @@ func handleIOSInstall() {
 
 	useSPM := utils.Prompt("Are you using Swift Package Manager (SPM)? (Y/n)")
 	if useSPM == "" || strings.ToLower(useSPM) == "y" {
-		fmt.Println("📦 Please add the Notifly SDK via SPM in Xcode by following these steps:")
+		fmt.Println("\n==================================================")
+		fmt.Println("📦 Please add the Clix SDK via SPM in Xcode:")
+		fmt.Println("--------------------------------------------------")
 		fmt.Println("1. Open your Xcode project.")
 		fmt.Println("2. Go to File > Add Packages...")
 		fmt.Println("3. Enter the URL below:")
 		fmt.Println("   https://github.com/clix-so/clix-ios-sdk.git")
+		fmt.Println("==================================================")
 		fmt.Println("Press Enter to continue...")
 		_, _ = fmt.Scanln()
 	} else {
-		fmt.Println("🤖 Installing Clix SDK for iOS")
-
+		fmt.Println("\n==================================================")
+		fmt.Println("🤖 Installing Clix SDK for iOS via CocoaPods")
+		fmt.Println("==================================================")
 		err := utils.RunShellCommand("pod", "Clix")
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "❌ Failed to run 'pod Clix':", err)
@@ -68,43 +72,54 @@ func handleIOSInstall() {
 		}
 	}
 
+	fmt.Println("\n==================================================")
 	fmt.Println("📱 Integrating Clix SDK for iOS...")
+	fmt.Println("==================================================\n")
 
-	fmt.Println("\n1️⃣ A Notification Service Extension and App Group configuration are required for push notifications.")
+	fmt.Println("1️⃣  Notification Service Extension & App Group Setup")
+	fmt.Println("--------------------------------------------------")
 	fmt.Println("1. In Xcode, go to File > New > Target > Notification Service Extension.")
 	fmt.Println("2. Name it 'NotificationServiceExtension'.")
 	fmt.Println("3. After creation, you should see a 'NotificationService.swift' file added.")
-
-	fmt.Println("\nPress Enter after you have added the extension...")
+	fmt.Println("--------------------------------------------------")
+	fmt.Print("Press Enter after you have added the extension...")
 	_, _ = fmt.Scanln()
 
-	fmt.Println("\n2️⃣ Now, you need to set up App Groups for both your main app and extension:")
+	fmt.Println("\n2️⃣  App Groups Setup (Main App & Extension)")
+	fmt.Println("--------------------------------------------------")
 	fmt.Println("1. Select your main app target in Xcode.")
 	fmt.Println("2. Go to the 'Signing & Capabilities' tab.")
 	fmt.Println("3. Click the '+' button to add a capability.")
 	fmt.Println("4. Search for and add 'App Groups'.")
-	fmt.Println("5. Click the '+' button under App Groups to create a new group.")
-	fmt.Printf("6. Name it 'group.clix.%s'.\n", projectID)
-
-	fmt.Println("\nPress Enter after you have configured App Groups for the main app...")
+	fmt.Println("--------------------------------------------------")
+	fmt.Print("Press Enter after you have configured App Groups for the main app...")
 	_, _ = fmt.Scanln()
 
-	fmt.Println("\n3️⃣ Now, you need to set up Push Notifications for both your main app and extension:")
+	fmt.Println("\n3️⃣  Push Notifications Setup (Main App & Extension)")
+	fmt.Println("--------------------------------------------------")
 	fmt.Println("1. Select your main app target in Xcode.")
 	fmt.Println("2. Go to the 'Signing & Capabilities' tab.")
 	fmt.Println("3. Click the '+' button to add a capability.")
 	fmt.Println("4. Search for and add 'Push Notifications'.")
-
-	fmt.Println("\nPress Enter after you have configured Push Notifications for the main app...")
+	fmt.Println("--------------------------------------------------")
+	fmt.Print("Press Enter after you have configured Push Notifications for the main app...")
 	_, _ = fmt.Scanln()
 
-	fmt.Println("\n4️⃣ Repeat the same steps for the NotificationServiceExtension target:")
+	fmt.Println("\n4️⃣  Update NotificationService.swift")
+	fmt.Println("--------------------------------------------------")
 	fmt.Println("1. Select the NotificationServiceExtension target.")
 	fmt.Println("2. Add the App Groups capability.")
-	fmt.Printf("3. Select the same group: 'group.clix.%s'.\n", projectID)
-
-	fmt.Println("\nPress Enter after you have configured App Groups for the extension...")
+	fmt.Printf("3. Select the same group: 'group.clix.%s'.", projectID)
+	fmt.Println("4. Add the Push Notifications capability as well.")
+	fmt.Println("--------------------------------------------------")
+	fmt.Print("Press Enter after you have configured everything for the extension target...")
+	fmt.Println("Press Enter after you have configured everything for the extension target...")
 	_, _ = fmt.Scanln()
+
+	fmt.Println("\n==================================================")
+	fmt.Println("🚀 Clix SDK iOS setup instructions complete!")
+	fmt.Println("==================================================")
+	fmt.Println("Run 'clix-cli doctor --ios' to verify your setup.\n")
 
 	err := ios.InstallClixIOS(projectID, apiKey)
 	if err != nil {

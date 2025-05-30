@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // import firebase-related checks from the same package
@@ -13,107 +14,108 @@ import (
 
 // RunDoctor performs a comprehensive check of the iOS project setup for Clix SDK
 func RunDoctor() error {
+	fmt.Println("====================================================")
 	fmt.Println("🔍 Starting Clix SDK doctor for iOS...")
+	fmt.Println("===================================================")
 
-	// 1. Check if we're in an Xcode project directory
+	fmt.Print("[1/8] Checking Xcode project directory... ")
+	time.Sleep(700 * time.Millisecond)
 	projectPath, projectName, err := checkXcodeProject()
 	if err != nil {
+		fmt.Println("❌")
 		return err
 	}
 	fmt.Printf("✅ Found Xcode project: %s\n", projectName)
 
-	// 2. Check AppDelegate.swift existence
+	fmt.Print("[2/8] Checking AppDelegate.swift... ")
+	time.Sleep(700 * time.Millisecond)
 	appDelegatePath, err := checkAppDelegateExists(projectPath)
 	if err != nil {
 		fmt.Println("❌ AppDelegate.swift not found")
-		fmt.Println("  └ You need to create AppDelegate.swift and set it up for Clix SDK integration.")
-		fmt.Println("  └ Run 'clix-cli install --ios' to automatically create the required files.")
-		return nil
+		return err
 	}
-	fmt.Println("✅ Found AppDelegate.swift")
+	fmt.Println("✅ AppDelegate.swift found.")
 
-	// 3. Check imports in AppDelegate.swift
+	fmt.Print("[3/8] Checking required imports... ")
+	time.Sleep(700 * time.Millisecond)
 	importErrors := checkAppDelegateImports(appDelegatePath)
-	if len(importErrors) > 0 {
-		for _, errMsg := range importErrors {
-			fmt.Println(errMsg)
-		}
+	if len(importErrors) == 0 {
+		fmt.Println("✅ OK")
 	} else {
-		fmt.Println("✅ All required imports are present in AppDelegate.swift")
+		fmt.Println()
+		for _, msg := range importErrors {
+			fmt.Println(msg)
+		}
 	}
 
-	// 4. Check Clix.initialize call
+	fmt.Print("[4/8] Checking Clix.initialize call... ")
+	time.Sleep(700 * time.Millisecond)
 	initErrors := checkClixInitialization(appDelegatePath)
-	if len(initErrors) > 0 {
-		for _, errMsg := range initErrors {
-			fmt.Println(errMsg)
-		}
+	if len(initErrors) == 0 {
+		fmt.Println("✅ OK")
 	} else {
-		fmt.Println("✅ Clix.initialize is properly implemented")
+		fmt.Println()
+		for _, msg := range initErrors {
+			fmt.Println(msg)
+		}
 	}
 
-	// 5. Check Firebase integration in AppDelegate.swift
+	// Variable to store SwiftUI integration errors
+	var swiftUIErrors []string
+	fmt.Print("[5/8] Checking SwiftUI integration... ")
+	time.Sleep(700 * time.Millisecond)
+	appSwiftPath, err := findAppSwiftFile(projectPath)
+	if err == nil {
+		swiftUIErrors = checkSwiftUIIntegration(appSwiftPath)
+		if len(swiftUIErrors) == 0 {
+			fmt.Println("✅ OK")
+		} else {
+			fmt.Println()
+			for _, msg := range swiftUIErrors {
+				fmt.Println(msg)
+			}
+		}
+	} else {
+		fmt.Println("(skipped: not a SwiftUI app)")
+	}
+
+	// Check push notification capability
+	fmt.Print("[6/8] Checking push notification capability... ")
+	time.Sleep(700 * time.Millisecond)
+	pushCapabilities, err := checkPushCapabilities(projectPath, projectName)
+	if err != nil {
+		fmt.Println("❌ Push notification capability not found or not enabled.")
+	} else if !pushCapabilities {
+		fmt.Println("❌ 'aps-environment' not set in entitlements file.")
+	} else {
+		fmt.Println("✅ Push notification capability enabled.")
+	}
+
+	// Check Firebase integration
+	fmt.Print("[7/8] Checking Firebase integration... ")
+	time.Sleep(700 * time.Millisecond)
 	firebaseErrors := checkFirebaseIntegration(appDelegatePath)
-	if len(firebaseErrors) > 0 {
-		for _, errMsg := range firebaseErrors {
-			fmt.Println(errMsg)
-		}
+	if len(firebaseErrors) == 0 {
+		fmt.Println("✅ OK")
 	} else {
-		fmt.Println("✅ Firebase is properly imported and configured in AppDelegate.swift")
+		fmt.Println()
+		for _, msg := range firebaseErrors {
+			fmt.Println(msg)
+		}
 	}
 
-	// 6. Check GoogleService-Info.plist existence
+	// Check GoogleService-Info.plist
+	fmt.Print("[8/8] Checking GoogleService-Info.plist... ")
+	time.Sleep(700 * time.Millisecond)
 	plistError := checkGoogleServicePlist(projectPath)
 	if plistError != nil {
 		fmt.Println(plistError)
 	} else {
-		fmt.Println("✅ GoogleService-Info.plist exists in the project directory")
+		fmt.Println("✅ GoogleService-Info.plist found.")
 	}
 
-	// 7. Check NotificationServiceExtension
-	nseErrors := checkNotificationServiceExtension(projectPath)
-	if len(nseErrors) > 0 {
-		for _, errMsg := range nseErrors {
-			fmt.Println(errMsg)
-		}
-	} else {
-		fmt.Println("✅ NotificationServiceExtension is present and correctly structured")
-	}
-
-	// 8. Check push notification capabilities
-	pushCapabilities, err := checkPushCapabilities(projectPath, projectName)
-	if err != nil {
-		fmt.Printf("❌ Error checking push notification capabilities: %s\n", err)
-		fmt.Println("  └ Please open your project in Xcode and enable push notifications:")
-		fmt.Println("  └ 1. Select your target under 'Targets'")
-		fmt.Println("  └ 2. Go to 'Signing & Capabilities'")
-		fmt.Println("  └ 3. Click '+' and add 'Push Notifications'")
-	} else if !pushCapabilities {
-		fmt.Println("❌ Push Notifications capability is not enabled")
-		fmt.Println("  └ Please open your project in Xcode and enable push notifications:")
-		fmt.Println("  └ 1. Select your target under 'Targets'")
-		fmt.Println("  └ 2. Go to 'Signing & Capabilities'")
-		fmt.Println("  └ 3. Click '+' and add 'Push Notifications'")
-	} else {
-		fmt.Println("✅ Push Notifications capability is enabled")
-	}
-
-	// 6. Check UIApplicationDelegateAdaptor in SwiftUI app (if applicable)
-	appSwiftPath, err := findAppSwiftFile(projectPath)
-	var swiftUIErrors []string
-	if err == nil {
-		swiftUIErrors = checkSwiftUIIntegration(appSwiftPath)
-		if len(swiftUIErrors) > 0 {
-			for _, errMsg := range swiftUIErrors {
-				fmt.Println(errMsg)
-			}
-		} else {
-			fmt.Println("✅ SwiftUI app delegate adaptor is properly set up")
-		}
-	}
-
-	fmt.Println("\n📋 Summary:")
-	if len(importErrors) > 0 || len(initErrors) > 0 || (err == nil && len(swiftUIErrors) > 0) || !pushCapabilities || len(firebaseErrors) > 0 || plistError != nil {
+	fmt.Println("====================================================")
+	if len(importErrors) > 0 || len(initErrors) > 0 || len(swiftUIErrors) > 0 || !pushCapabilities || len(firebaseErrors) > 0 || plistError != nil {
 		fmt.Println("⚠️ Some issues were found with your Clix SDK integration.")
 		fmt.Println("  └ Please fix the issues mentioned above to ensure proper push notification delivery.")
 		fmt.Println("  └ Run 'clix-cli install --ios' to fix most issues automatically.")
@@ -121,6 +123,7 @@ func RunDoctor() error {
 		fmt.Println("🎉 Your iOS project is properly configured for Clix SDK!")
 		fmt.Println("  └ Push notifications should be working correctly.")
 	}
+	fmt.Println("===================================================")
 
 	return nil
 }
