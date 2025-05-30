@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/clix-so/clix-cli/pkg/ios"
+	"github.com/clix-so/clix-cli/pkg/android"
 	"github.com/clix-so/clix-cli/pkg/utils"
 	"github.com/spf13/cobra"
 )
@@ -32,7 +33,12 @@ var uninstallCmd = &cobra.Command{
 			ios.UninstallClixIOS()
 		}
 		if uninstallAndroid {
-			fmt.Println("Android uninstall logic not implemented yet.")
+			err := android.UninstallClixAndroid()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to uninstall Clix SDK from Android: %v\n", err)
+			} else {
+				fmt.Println("Clix SDK uninstalled from Android project.")
+			}
 		}
 		if !uninstallIOS && !uninstallAndroid {
 			fmt.Println("Please specify at least one platform with --ios or --android.")

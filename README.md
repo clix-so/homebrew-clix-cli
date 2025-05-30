@@ -12,8 +12,8 @@ brew install clix-so/clix-cli/clix
 
 ### Install via Source
 ```sh
-git clone https://github.com/clix-so/clix-cli.git
-cd clix-cli
+git clone https://github.com/clix-so/homebrew-clix-cli.git
+cd homebrew-clix-cli
 make install
 ```
 
