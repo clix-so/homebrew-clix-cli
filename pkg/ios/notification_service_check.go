@@ -13,15 +13,17 @@ import (
 func checkNotificationServiceExtension(projectPath string) []string {
 	var errors []string
 
-	// Check if the extension directory exists
-	extensionDir := filepath.Join(projectPath, "NotificationServiceExtension")
+	// Check if the extension directory exists one level above the project root
+	// Get the project root directory (parent of the project path)
+	projectRoot := filepath.Dir(projectPath)                                 // First get project root
+	parentDir := filepath.Dir(projectRoot)                                   // Then get one level above
+	extensionDir := filepath.Join(parentDir, "NotificationServiceExtension") // One level above project root
 	infoPlist := filepath.Join(extensionDir, "Info.plist")
 	serviceSwift := filepath.Join(extensionDir, "NotificationService.swift")
 
 	if _, err := os.Stat(extensionDir); err != nil {
 		errors = append(errors, "❌ NotificationServiceExtension directory not found.")
 		errors = append(errors, "  └ Please add a Notification Service Extension target in Xcode.")
-		// Return early since we can't perform other checks without the extension
 		return errors
 	}
 
@@ -48,7 +50,21 @@ func checkNotificationServiceExtension(projectPath string) []string {
 	projectID := extractProjectIDFromAppDelegate(filepath.Join(projectPath, "AppDelegate.swift"))
 
 	// Check App Groups in both main app and extension targets
-	appEntitlements := filepath.Join(projectPath, fmt.Sprintf("%s.entitlements", projectName))
+	// Find any .entitlements file in the project directory
+	var appEntitlements string
+	files, err := os.ReadDir(projectPath)
+	if err == nil {
+		for _, file := range files {
+			if !file.IsDir() && strings.HasSuffix(file.Name(), ".entitlements") {
+				appEntitlements = filepath.Join(projectPath, file.Name())
+				break
+			}
+		}
+	}
+	if appEntitlements == "" {
+		// Fallback to project name if no .entitlements file found
+		appEntitlements = filepath.Join(projectPath, fmt.Sprintf("%s.entitlements", projectName))
+	}
 	extensionEntitlements := filepath.Join(extensionDir, "NotificationServiceExtension.entitlements")
 
 	// Check if both app and extension have entitlements files
@@ -70,25 +86,100 @@ func checkNotificationServiceExtension(projectPath string) []string {
 			extensionEntitlementsContent, err := os.ReadFile(extensionEntitlements)
 			if err == nil {
 				// Check if both entitlements have app groups
-				appGroupPattern := `<key>com\.apple\.security\.application-groups</key>.*?<array>(.*?)</array>`
+				// Support multiline <array> blocks and extract <string> values
+				// More flexible regex pattern that can handle whitespace and newlines
+				appGroupPattern := `(?s)<key>\s*com\.apple\.security\.application-groups\s*</key>\s*<array>(.*?)</array>`
 				appGroupRegex := regexp.MustCompile(appGroupPattern)
 
-				appGroups := appGroupRegex.FindStringSubmatch(string(appEntitlementsContent))
-				extensionGroups := appGroupRegex.FindStringSubmatch(string(extensionEntitlementsContent))
+				// Alternative pattern if the first one doesn't match
+				altAppGroupPattern := `(?s)com\.apple\.security\.application-groups\s*=\s*\(([^\)]*)\)`
+				altAppGroupRegex := regexp.MustCompile(altAppGroupPattern)
 
-				if len(appGroups) < 2 || len(extensionGroups) < 2 {
+				// Try primary pattern first
+				appGroupsArray := appGroupRegex.FindStringSubmatch(string(appEntitlementsContent))
+				extensionGroupsArray := appGroupRegex.FindStringSubmatch(string(extensionEntitlementsContent))
+
+				// If primary pattern didn't match for app, try alternative pattern
+				if len(appGroupsArray) < 2 {
+					appGroupsArray = altAppGroupRegex.FindStringSubmatch(string(appEntitlementsContent))
+				}
+
+				// If primary pattern didn't match for extension, try alternative pattern
+				if len(extensionGroupsArray) < 2 {
+					extensionGroupsArray = altAppGroupRegex.FindStringSubmatch(string(extensionEntitlementsContent))
+				}
+
+				var appGroupsFlat, extensionGroupsFlat []string
+
+				// Function to extract group identifiers from content
+				extractGroups := func(content string) []string {
+					var groups []string
+
+					// Try XML format first: <string>group.name</string>
+					stringPattern := `<string>(.*?)</string>`
+					stringRegex := regexp.MustCompile(stringPattern)
+					matches := stringRegex.FindAllStringSubmatch(content, -1)
+					for _, m := range matches {
+						if len(m) > 1 && strings.TrimSpace(m[1]) != "" {
+							groups = append(groups, strings.TrimSpace(m[1]))
+						}
+					}
+
+					// If no XML format found, try alternative format: "group.name"
+					if len(groups) == 0 {
+						altStringPattern := `"(group\.[^"]+)"`
+						altStringRegex := regexp.MustCompile(altStringPattern)
+						altMatches := altStringRegex.FindAllStringSubmatch(content, -1)
+						for _, m := range altMatches {
+							if len(m) > 1 && strings.TrimSpace(m[1]) != "" {
+								groups = append(groups, strings.TrimSpace(m[1]))
+							}
+						}
+					}
+
+					return groups
+				}
+
+				// Extract groups from both app and extension
+				if len(appGroupsArray) >= 2 {
+					appGroupsFlat = extractGroups(appGroupsArray[1])
+				}
+				if len(extensionGroupsArray) >= 2 {
+					extensionGroupsFlat = extractGroups(extensionGroupsArray[1])
+				}
+
+				if len(appGroupsFlat) == 0 || len(extensionGroupsFlat) == 0 {
 					errors = append(errors, "❌ App Groups not properly configured in entitlements files.")
 					errors = append(errors, "  └ Please ensure both main app and extension have identical app groups.")
 				} else {
-					// Check if they share the same app group
-					if appGroups[1] != extensionGroups[1] {
+					// Check if they share the same app group (intersection)
+					shared := false
+					for _, ag := range appGroupsFlat {
+						for _, eg := range extensionGroupsFlat {
+							if ag == eg {
+								shared = true
+								break
+							}
+						}
+						if shared {
+							break
+						}
+					}
+					if !shared {
 						errors = append(errors, "❌ App and Extension have different App Groups.")
-						errors = append(errors, "  └ The app and extension must share identical App Groups.")
+						errors = append(errors, "  └ The app and extension must share at least one identical App Group.")
 					}
 
-					// Check app group format
+					// Check app group format in main app
 					expectedAppGroup := fmt.Sprintf("group.clix.%s", projectID)
-					if !strings.Contains(appGroups[1], expectedAppGroup) {
+					foundFormat := false
+					for _, ag := range appGroupsFlat {
+						if ag == expectedAppGroup {
+							foundFormat = true
+							break
+						}
+					}
+					if !foundFormat {
 						errors = append(errors, fmt.Sprintf("❌ App Group doesn't follow the required format: %s", expectedAppGroup))
 						errors = append(errors, "  └ App Group should be in the format 'group.clix.{project_id}'.")
 					}
@@ -110,8 +201,8 @@ func checkNotificationServiceExtension(projectPath string) []string {
 		<true/>
 	</dict>`
 
-			if !strings.Contains(string(infoPlistContent), "NSAppTransportSecurity") || 
-               !strings.Contains(string(infoPlistContent), "NSAllowsArbitraryLoads") {
+			if !strings.Contains(string(infoPlistContent), "NSAppTransportSecurity") ||
+				!strings.Contains(string(infoPlistContent), "NSAllowsArbitraryLoads") {
 				errors = append(errors, "❌ NotificationServiceExtension Info.plist missing NSAppTransportSecurity configuration.")
 				errors = append(errors, "  └ Please add the following to your Info.plist:")
 				errors = append(errors, fmt.Sprintf("  └ %s", requiredPlistContent))
@@ -172,7 +263,7 @@ func extractProjectIDFromAppDelegate(appDelegatePath string) string {
 	}
 
 	// Look for projectId in Clix.initialize
-	projectIDRegex := regexp.MustCompile(`projectId:\s*"([^"]*)"`) 
+	projectIDRegex := regexp.MustCompile(`projectId:\s*"([^"]*)"`)
 	matches := projectIDRegex.FindStringSubmatch(string(content))
 	if len(matches) > 1 {
 		return matches[1]
