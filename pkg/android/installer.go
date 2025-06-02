@@ -2,8 +2,10 @@ package android
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/clix-so/clix-cli/pkg/utils"
 )
@@ -93,60 +95,163 @@ func HandleAndroidInstall(apiKey, projectID string) {
 	}
 }
 
-// CheckAndroidMainActivityPermissions checks MainActivity for permission request code, prints instructions if missing
-func CheckAndroidMainActivityPermissions(projectRoot string) bool {
-	javaDir := filepath.Join(projectRoot, "app", "src", "main", "java")
-	kotlinDir := filepath.Join(projectRoot, "app", "src", "main", "kotlin")
-	mainActivityFiles := []string{}
 
-	findMainActivity := func(root string) {
-		filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return nil
-			}
-			if !info.IsDir() && (info.Name() == "MainActivity.java" || info.Name() == "MainActivity.kt") {
-				mainActivityFiles = append(mainActivityFiles, path)
-			}
-			return nil
-		})
+// AddGradleRepository tries to insert mavenCentral() into settings.gradle(.kts) or build.gradle(.kts)
+func AddGradleRepository(projectRoot string) bool {
+	gradleFiles := []string{
+		filepath.Join(projectRoot, "settings.gradle"),
+		filepath.Join(projectRoot, "settings.gradle.kts"),
+		filepath.Join(projectRoot, "build.gradle"),
+		filepath.Join(projectRoot, "build.gradle.kts"),
 	}
-
-	findMainActivity(javaDir)
-	findMainActivity(kotlinDir)
-
-	if len(mainActivityFiles) == 0 {
-		utils.Warnln("No MainActivity.java or MainActivity.kt found. Please ensure you have a MainActivity.") // TODO: add following action
-		return false
-	}
-
-	permissionPattern := []string{
-		"requestPermissions(",
-		"ActivityCompat.requestPermissions(",
-		"ContextCompat.checkSelfPermission(",
-		"Manifest.permission.",
-	}
-
-	found := false
-	for _, file := range mainActivityFiles {
-		data, err := os.ReadFile(file)
+	for _, file := range gradleFiles {
+		data, err := ioutil.ReadFile(file)
 		if err != nil {
 			continue
 		}
 		content := string(data)
-		for _, pat := range permissionPattern {
-			if Contains(content, pat) {
-				found = true
-				break
-			}
+		if Contains(content, "repositories") && Contains(content, "mavenCentral()") {
+			return true // already present
+		}
+		// Try to insert after 'repositories {' or at end
+		if idx := IndexOf(content, "repositories {"); idx != -1 {
+			insertAt := idx + len("repositories {")
+			newContent := content[:insertAt] + "\n    mavenCentral()" + content[insertAt:]
+			err = ioutil.WriteFile(file, []byte(newContent), 0644)
+			return err == nil
 		}
 	}
-
-	if found {
-		utils.Successln("MainActivity contains code requesting permissions.")
-		return true
-	}
-
-	utils.Failureln("MainActivity does not contain code requesting permissions.")
 	return false
 }
 
+// AddGradleDependency tries to insert the Clix SDK dependency into app/build.gradle(.kts)
+func AddGradleDependency(projectRoot string) bool {
+	gradleFiles := []string{
+		filepath.Join(projectRoot, "app", "build.gradle"),
+		filepath.Join(projectRoot, "app", "build.gradle.kts"),
+	}
+	for _, file := range gradleFiles {
+		data, err := ioutil.ReadFile(file)
+		if err != nil {
+			continue
+		}
+		content := string(data)
+		if Contains(content, "implementation(\"so.clix:clix-android-sdk") {
+			return true // already present
+		}
+		// Try to insert after 'dependencies {' or at end
+		if idx := IndexOf(content, "dependencies {"); idx != -1 {
+			insertAt := idx + len("dependencies {")
+			newContent := content[:insertAt] + "\n    implementation(\"so.clix:clix-android-sdk:0.0.2\")" + content[insertAt:]
+			err = ioutil.WriteFile(file, []byte(newContent), 0644)
+			return err == nil
+		}
+	}
+	return false
+}
+
+// AddGradlePlugin tries to insert the Google services plugin into app/build.gradle(.kts)
+func AddGradlePlugin(projectRoot string) bool {
+	gradleFiles := []string{
+		filepath.Join(projectRoot, "app", "build.gradle"),
+		filepath.Join(projectRoot, "app", "build.gradle.kts"),
+	}
+	for _, file := range gradleFiles {
+		data, err := ioutil.ReadFile(file)
+		if err != nil {
+			continue
+		}
+		content := string(data)
+		if Contains(content, "id(\"com.google.gms.google-services\")") {
+			return true // already present
+		}
+		// Try to insert after 'dependencies {' or at end
+		if idx := IndexOf(content, "plugins {"); idx != -1 {
+			insertAt := idx + len("plugins {")
+			newContent := content[:insertAt] + "\n    id(\"com.google.gms.google-services\") version \"4.4.2\"" + content[insertAt:]
+			err = ioutil.WriteFile(file, []byte(newContent), 0644)
+			return err == nil
+		}
+	}
+	return false
+}
+
+// AddClixInitializationToApplication inserts Clix SDK initialization code into the Application.kt if missing
+func AddClixInitializationToApplication(projectRoot, apiKey, projectID string) bool { // TODO: test
+	kotlinDir := filepath.Join(projectRoot, "app", "src", "main", "kotlin")
+	found := false
+	err := filepath.Walk(kotlinDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return nil
+		}
+		if strings.HasSuffix(info.Name(), "Application.kt") {
+			data, err := ioutil.ReadFile(path)
+			if err != nil {
+				return nil
+			}
+			content := string(data)
+			if strings.Contains(content, "Clix.initialize(") {
+				found = true
+				return nil
+			}
+			// Insert imports at the top if missing
+			importBlock := "import so.clix.Clix\nimport so.clix.ClixConfig\nimport so.clix.ClixLogLevel\n"
+			if !strings.Contains(content, "import so.clix.Clix") {
+				lines := strings.Split(content, "\n")
+				for i, line := range lines {
+					if strings.HasPrefix(line, "package ") {
+						// Insert after package
+						lines = append(lines[:i+1], append([]string{importBlock}, lines[i+1:]...)...)
+						break
+					}
+				}
+				content = strings.Join(lines, "\n")
+			}
+			// Insert initialization in onCreate
+			initBlock := `override fun onCreate() {
+        super.onCreate()
+        // Project ID: ` + projectID + `
+        lifecycleScope.launch {
+            try {
+                val config =
+            ClixConfig(
+                projectId = "` + projectID + `",
+                apiKey = "` + apiKey + `",
+            )
+        Clix.initialize(this, config)
+            } catch (e: Exception) {
+                // Handle initialization failure
+            }
+        }
+    }`
+			if strings.Contains(content, "override fun onCreate()") {
+				// Replace existing onCreate with template
+				lines := strings.Split(content, "\n")
+				for i, line := range lines {
+					if strings.Contains(line, "override fun onCreate()") {
+						// Replace block (simple heuristic: next 2~20 lines)
+						end := i + 1
+						for ; end < len(lines) && end-i < 20; end++ {
+							if strings.Contains(lines[end], "}") {
+								break
+							}
+						}
+						lines = append(lines[:i], append([]string{initBlock}, lines[end+1:]...)...)
+						break
+					}
+				}
+				content = strings.Join(lines, "\n")
+			} else {
+				// Insert initBlock before last '}'
+				idx := strings.LastIndex(content, "}")
+				if idx != -1 {
+					content = content[:idx] + initBlock + "\n}" + content[idx+1:]
+				}
+			}
+			ioutil.WriteFile(path, []byte(content), 0644)
+			found = true
+		}
+		return nil
+	})
+	return found && err == nil
+}
