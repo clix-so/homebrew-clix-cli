@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/clix-so/clix-cli/pkg/utils"
 )
 
 // CheckClixCoreImport checks if any Application class imports so.clix.core.Clix (Java or Kotlin).
-func CheckClixCoreImport(projectRoot string) error {
+func CheckClixCoreImport(projectRoot string) bool {
 	javaDir := filepath.Join(projectRoot, "app", "src", "main", "java")
 	kotlinDir := filepath.Join(projectRoot, "app", "src", "main", "kotlin")
 	appFiles := []string{}
@@ -36,8 +38,8 @@ func CheckClixCoreImport(projectRoot string) error {
 	findAppFiles(kotlinDir)
 
 	if len(appFiles) == 0 {
-		fmt.Println("[WARN] No Application class found under app/src/main/java or app/src/main/kotlin.")
-		return nil
+		utils.Warnln("No Application class found under app/src/main/java or app/src/main/kotlin.") // TODO: add following action
+		return false
 	}
 
 	importFound := false
@@ -57,21 +59,22 @@ func CheckClixCoreImport(projectRoot string) error {
 	}
 
 	if importFound {
-		fmt.Println("[OK] so.clix.core.Clix is imported in Application class.")
+		utils.Successln("so.clix.core.Clix is imported in Application class.")
 	} else {
-		fmt.Println("[FAIL] so.clix.core.Clix is not imported in any Application class.")
+		utils.Failureln("so.clix.core.Clix is not imported in any Application class.")
 	}
 
 	if initializeFound {
-		fmt.Println("[OK] Clix.initialize(this, ...) is called in onCreate() of Application class.")
+		utils.Successln("Clix.initialize(this, ...) is called in onCreate() of Application class.")
 	} else {
-		fmt.Println("[FAIL] Clix.initialize(this, ...) is NOT called in onCreate() of any Application class.")
+		utils.Failureln("Clix.initialize(this, ...) is NOT called in onCreate() of any Application class.")
 	}
 
 	if !importFound || !initializeFound {
-		return fmt.Errorf("application class missing required import or initialization")
+		return false
 	}
-	return nil
+
+	return true
 }
 
 // stringContainsImportClix checks if the given file content contains the import statement for so.clix.core.Clix
@@ -125,109 +128,67 @@ func IndexOf(s, substr string) int {
 }
 
 // CheckGoogleServicesJSON checks if google-services.json exists in the correct location
-func CheckGoogleServicesJSON(projectRoot string) error {
+func CheckGoogleServicesJSON(projectRoot string) bool {
 	gsPath := filepath.Join(projectRoot, "app", "google-services.json")
 	if _, err := os.Stat(gsPath); os.IsNotExist(err) {
-		fmt.Println("[FAIL] google-services.json not found at app/google-services.json.")
-		return fmt.Errorf("google-services.json not found")
-	}
-	fmt.Println("[OK] google-services.json found at app/google-services.json.")
-	return nil
-}
-
-// CheckMainActivityPermissionRequest checks if MainActivity requests permissions (Java or Kotlin)
-func CheckMainActivityPermissionRequest(projectRoot string) error {
-	mainActivityFiles := []string{}
-	javaDir := filepath.Join(projectRoot, "app", "src", "main", "java")
-	kotlinDir := filepath.Join(projectRoot, "app", "src", "main", "kotlin")
-
-	findMainActivity := func(root string) {
-		filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return nil
-			}
-			if !info.IsDir() && (info.Name() == "MainActivity.java" || info.Name() == "MainActivity.kt") {
-				mainActivityFiles = append(mainActivityFiles, path)
-			}
-			return nil
-		})
+		utils.Failureln("Missing google-services.json at app/google-services.json")
+		utils.Indentln("See https://docs.clix.so/firebase-setting for setup instructions.", 3)
+		return false
 	}
 
-	findMainActivity(javaDir)
-	findMainActivity(kotlinDir)
-
-	if len(mainActivityFiles) == 0 {
-		fmt.Println("[WARN] No MainActivity.java or MainActivity.kt found.")
-		return nil
-	}
-
-	permissionPattern := []string{
-		"requestPermissions(", // AndroidX, API 23+
-		"ActivityCompat.requestPermissions(",
-		"ContextCompat.checkSelfPermission(",
-		"Manifest.permission.",
-	}
-	found := false
-	for _, file := range mainActivityFiles {
-		data, err := os.ReadFile(file)
-		if err != nil {
-			continue
-		}
-		content := string(data)
-		for _, pat := range permissionPattern {
-			if Contains(content, pat) {
-				found = true
-				break
-			}
-		}
-	}
-
-	if found {
-		fmt.Println("[OK] MainActivity contains code requesting permissions.")
-		return nil
-	}
-	fmt.Println("[FAIL] MainActivity does NOT contain code requesting permissions.")
-	return fmt.Errorf("No permission request code found in MainActivity")
+	utils.Successln("google-services.json found")
+	return true
 }
 
 // RunDoctor runs all Android doctor checks.
 func RunDoctor(projectRoot string) {
-	errs := []error{}
-
-	// 1. Check Gradle repository and dependency
+	utils.TitlelnWithSpinner("Checking Gradle repository settings...")
 	if !CheckGradleRepository(projectRoot) {
-		errs = append(errs, fmt.Errorf("repositories { mavenCentral() } not found in Gradle config"))
+		utils.Indentln("To fix this, add the following to settings.gradle(.kts) or build.gradle(.kts):", 3)
+		fmt.Println()
+		utils.Grayln(`   repositories {
+	   mavenCentral()
+   }`)
 	}
-	if !CheckGradleDependency(projectRoot) {
-		errs = append(errs, fmt.Errorf("Clix SDK dependency not found in app/build.gradle(.kts)"))
-	}
-	if !CheckGradlePlugin(projectRoot) {
-		errs = append(errs, fmt.Errorf("Google services plugin not found in app/build.gradle(.kts)"))
-	}
+	fmt.Println()
 
-	// 2. Check Clix core import in Application class
-	if err := CheckClixCoreImport(projectRoot); err != nil {
-		errs = append(errs, err)
+	utils.TitlelnWithSpinner("Checking for Clix SDK dependency...")
+	if !CheckGradleDependency(projectRoot) {
+		utils.Indentln("To fix this, add the following to app/build.gradle(.kts):", 3)
+		fmt.Println()
+		utils.Grayln(`   dependencies {
+       implementation("so.clix:clix-android-sdk:0.0.2")
+   }`)
 	}
+	fmt.Println()
+
+	utils.TitlelnWithSpinner("Checking for Google Services plugin...")
+	if !CheckGradlePlugin(projectRoot) {
+		utils.Indentln("To fix this, add the following to build.gradle(.kts):", 3)
+		fmt.Println()
+		utils.Grayln(`   plugins {
+       id("com.google.gms.google-services") version "4.4.2"
+   }`)
+	}
+	fmt.Println()
+
+	utils.TitlelnWithSpinner("Checking Clix SDK initialization...")
+	CheckClixCoreImport(projectRoot)
+	fmt.Println()
 
 	// 3. Check permission request in MainActivity
-	if err := CheckMainActivityPermissionRequest(projectRoot); err != nil {
-		errs = append(errs, err)
+	utils.TitlelnWithSpinner("Checking permission request...")
+	if !CheckAndroidMainActivityPermissions(projectRoot) {
+		utils.Indentln("To fix this, add the following to MainActivity.java or MainActivity.kt:", 3)
+		fmt.Println()
+		utils.Grayln(`ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)`)
 	}
+	fmt.Println()
 
 	// 4. Check google-services.json existence
-	if err := CheckGoogleServicesJSON(projectRoot); err != nil {
-		errs = append(errs, err)
-	}
-
-	if len(errs) == 0 {
-		fmt.Println("\n[Android Doctor] All checks passed!")
-	} else {
-		fmt.Println("\n[Android Doctor] Some checks failed:")
-		for _, err := range errs {
-			fmt.Println(" -", err)
-		}
-	}
+	utils.TitlelnWithSpinner("Checking google-services.json...")
+	CheckGoogleServicesJSON(projectRoot)
+	fmt.Println()
 }
 
 

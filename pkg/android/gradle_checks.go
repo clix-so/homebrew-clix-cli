@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+
+	"github.com/clix-so/clix-cli/pkg/utils"
 )
 
 // AddGradleRepository tries to insert mavenCentral() into settings.gradle(.kts) or build.gradle(.kts)
@@ -110,12 +112,11 @@ func CheckGradleRepository(projectRoot string) bool {
 	}
 
 	if found {
-		fmt.Println("[OK] repositories { mavenCentral() } found in Gradle config.")
+		utils.Successln("Gradle repositories are properly configured.")
 		return true
 	}
 
-	fmt.Println("[FAIL] repositories { mavenCentral() } not found in settings.gradle(.kts) or build.gradle(.kts). Please add:")
-	fmt.Println(`repositories {\n    mavenCentral()\n}`)
+	utils.Failureln("Gradle repository settings are missing.")
 	return false
 }
 
@@ -144,13 +145,12 @@ func CheckGradleDependency(projectRoot string) bool {
 		}
 	}
 
-	if found {
-		fmt.Println("[OK] Clix SDK dependency found in app/build.gradle(.kts).")
+	if (found) {
+		utils.Successln("Clix SDK dependency found.")
 		return true
 	}
 
-	fmt.Println("[FAIL] Clix SDK dependency not found in app/build.gradle(.kts). Please add:")
-	fmt.Println(`dependencies {\n    implementation(\"so.clix:clix-android-sdk:0.0.2\")\n}`)
+	utils.Failureln("Clix SDK dependency is missing.")
 	return false
 }
 
@@ -179,12 +179,11 @@ func CheckGradlePlugin(projectRoot string) bool {
 		}
 	}
 
-	if found {
-		fmt.Println("[OK] Google services plugin found in app/build.gradle(.kts).")
+	if (found) {
+		utils.Successln("Google services plugin found in app/build.gradle(.kts).")
 		return true
 	}
 
-	fmt.Println("[FAIL] Google services plugin not found in app/build.gradle(.kts). Please add:")
-	fmt.Println(`plugins {\n    id(\"com.google.gms.google-services\") version \"4.4.2\"\n}`)
+	fmt.Println("❌ Google services plugin not found in app/build.gradle(.kts)")
 	return false
 }

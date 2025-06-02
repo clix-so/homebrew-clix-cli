@@ -4,139 +4,101 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/clix-so/clix-cli/pkg/utils"
 )
 
 // HandleAndroidInstall guides the user through the Android installation checklist.
 func HandleAndroidInstall(apiKey, projectID string) {
-	fmt.Println("🤖 Installing Clix SDK for Android...")
-
 	projectRoot, err := os.Getwd()
 	if err != nil {
-		fmt.Println("[ERROR] Could not determine working directory.")
+		utils.Failureln("Could not determine working directory.") // TODO: revisit this
 		return
 	}
 
-	// 1. Check google-services.json
-	gsPath := filepath.Join(projectRoot, "app", "google-services.json")
-	if _, err := os.Stat(gsPath); os.IsNotExist(err) {
-		fmt.Println("\n❗ google-services.json not found.")
-		fmt.Println("Please download google-services.json from your Firebase Console and place it in app/google-services.json.")
-		fmt.Println("Firebase Console: https://console.firebase.google.com/")
+	utils.TitlelnWithSpinner("Checking google-services.json...")
+	if !CheckGoogleServicesJSON(projectRoot) {
 		return
 	}
+	fmt.Println()
 
-	// 2. Check Gradle repository and dependency
+	utils.TitlelnWithSpinner("Checking Gradle repository settings...")
 	repoOK := CheckGradleRepository(projectRoot)
 	if !repoOK {
 		if AddGradleRepository(projectRoot) {
-			fmt.Println("[AUTO-FIX] Added 'repositories { mavenCentral() }' to your Gradle config.")
-			repoOK = true
+			utils.BranchSuccessln("Fixed: Automatically added")
 		} else {
-			fmt.Println("[FAIL] Could not automatically add mavenCentral() to your Gradle config. Please add it manually.")
+			utils.BranchFailureln("Could not fix automatically. Please add the following manually to settings.gradle(.kts) or build.gradle(.kts):")
 		}
+		utils.Grayln(`      repositories {
+          mavenCentral()
+      }`)
 	}
+	fmt.Println()
+
+	utils.TitlelnWithSpinner("Checking for Clix SDK dependency...")
 	depOK := CheckGradleDependency(projectRoot)
 	if !depOK {
 		if AddGradleDependency(projectRoot) {
-			fmt.Println("[AUTO-FIX] Added 'implementation(\"so.clix:clix-android-sdk:1.0.0\")' to your app/build.gradle(.kts).")
+			utils.BranchSuccessln("Fixed: Automatically added")
 			depOK = true
 		} else {
-			fmt.Println("[FAIL] Could not automatically add Clix SDK dependency. Please add it manually.")
+			utils.BranchFailureln("Could not fix automatically. Please add the following manually to app/build.gradle(.kts):")
 		}
+		utils.Grayln(`      dependencies {
+          implementation("so.clix:clix-android-sdk:1.0.0")
+      }`)
 	}
+	fmt.Println()
+
+	utils.TitlelnWithSpinner("Checking for Google Services plugin...")
 	pluginOK := CheckGradlePlugin(projectRoot)
 	if !pluginOK {
 		if AddGradlePlugin(projectRoot) {
-			fmt.Println("[AUTO-FIX] Added 'id(\"com.google.gms.google-services\") version \"4.4.2\"' to your app/build.gradle(.kts).")
+			utils.BranchSuccessln("Fixed: Automatically added")
 			pluginOK = true
 		} else {
-			fmt.Println("[FAIL] Could not automatically add Google services plugin. Please add it manually.")
+			utils.BranchFailureln("Could not fix automatically. Please add the following manually to build.gradle(.kts):")
 		}
+		utils.Grayln(`      plugins {
+          id("com.google.gms.google-services") version "4.4.2"
+      }`)
 	}
+	fmt.Println()
 
-	// 3. Check Application class for Clix import and initialization
-	appOK := CheckAndroidApplicationSetup(projectRoot)
+	utils.TitlelnWithSpinner("Checking Clix SDK initialization...")
+	appOK := CheckClixCoreImport(projectRoot)
 	if !appOK {
 		if AddClixInitializationToApplication(projectRoot, apiKey, projectID) {
-			fmt.Println("[AUTO-FIX] Added Clix SDK initialization code to your Application class.")
+			utils.BranchSuccessln("Fixed: Automatically fixed")
 			appOK = true
 		} else {
-			fmt.Println("[FAIL] Could not automatically add Clix SDK initialization. Please add it manually to your Application class.")
+			utils.BranchFailureln("Could not fix automatically. Please add the following to your Application(.kt or .java):")
+			// TODO: add example code snippet
 		}
 	}
-	// 4. Check MainActivity for permission request
+	fmt.Println()
+
+	utils.TitlelnWithSpinner("Checking permission request...")
 	mainActivityOK := CheckAndroidMainActivityPermissions(projectRoot)
+	if !mainActivityOK {
+		fmt.Println(`ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)`)
+	}
+	fmt.Println()
 
 	if repoOK && depOK && appOK && mainActivityOK {
-		fmt.Println("\n✅ Clix SDK installation checklist complete! Your Android project is ready.")
+		utils.Successln("Clix SDK installation checklist complete! Your Android project is ready.")
 	} else {
-		fmt.Println("\n❗ Please address the above issues and re-run 'clix install --android' or 'clix doctor --android'.")
+		utils.Failureln("Please address the above issues and re-run 'clix install --android' or 'clix doctor --android'.")
 	}
-}
-
-// CheckAndroidApplicationSetup checks Application class for import and initialization, prints instructions if missing
-func CheckAndroidApplicationSetup(projectRoot string) bool {
-	javaDir := filepath.Join(projectRoot, "app", "src", "main", "java")
-	kotlinDir := filepath.Join(projectRoot, "app", "src", "main", "kotlin")
-
-	appFiles := []string{}
-	findAppFiles := func(root string) {
-		filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return nil
-			}
-
-			extension := filepath.Ext(path)
-
-			isFile := !info.IsDir()
-			isJavaApplication := extension == ".java" && len(info.Name()) >= len("Application.java") && info.Name()[len(info.Name())-len("Application.java"):] == "Application.java"
-			isKotlinApplication := extension == ".kt" && len(info.Name()) >= len("Application.kt") && info.Name()[len(info.Name())-len("Application.kt"):] == "Application.kt"
-
-			if isFile && (isJavaApplication || isKotlinApplication) {
-				appFiles = append(appFiles, path)
-			}
-			return nil
-		})
-	}
-	findAppFiles(javaDir)
-	findAppFiles(kotlinDir)
-
-	if len(appFiles) == 0 {
-		fmt.Println("\n❗ No Application class found. Please create one and register it in your AndroidManifest.xml.")
-		fmt.Println("Example (Kotlin):\n---------------------")
-		fmt.Println(`class MyApp : Application() {\n    override fun onCreate() {\n        super.onCreate()\n        Clix.initialize(this, /* config */)\n    }\n}`)
-		return false
-	}
-	importFound := false
-	initFound := false
-	for _, file := range appFiles {
-		data, err := os.ReadFile(file)
-		if err != nil {
-			continue
-		}
-		content := string(data)
-		if Contains(content, "import so.clix.core.Clix") {
-			importFound = true
-		}
-		if StringContainsClixInitializeInOnCreate(content) {
-			initFound = true
-		}
-	}
-	if !importFound {
-		fmt.Println("\n❗ Application class is missing 'import so.clix.core.Clix'. Please add this import.")
-	}
-	if !initFound {
-		fmt.Println("\n❗ Application class is missing Clix.initialize(this, ...) in onCreate(). Please add:")
-		fmt.Println("    Clix.initialize(this, /* config */)")
-	}
-	return importFound && initFound
 }
 
 // CheckAndroidMainActivityPermissions checks MainActivity for permission request code, prints instructions if missing
 func CheckAndroidMainActivityPermissions(projectRoot string) bool {
-	mainActivityFiles := []string{}
 	javaDir := filepath.Join(projectRoot, "app", "src", "main", "java")
 	kotlinDir := filepath.Join(projectRoot, "app", "src", "main", "kotlin")
+	mainActivityFiles := []string{}
+
 	findMainActivity := func(root string) {
 		filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
@@ -148,18 +110,22 @@ func CheckAndroidMainActivityPermissions(projectRoot string) bool {
 			return nil
 		})
 	}
+
 	findMainActivity(javaDir)
 	findMainActivity(kotlinDir)
+
 	if len(mainActivityFiles) == 0 {
-		fmt.Println("\n❗ No MainActivity.java or MainActivity.kt found. Please ensure you have a MainActivity.")
+		utils.Warnln("No MainActivity.java or MainActivity.kt found. Please ensure you have a MainActivity.") // TODO: add following action
 		return false
 	}
+
 	permissionPattern := []string{
 		"requestPermissions(",
 		"ActivityCompat.requestPermissions(",
 		"ContextCompat.checkSelfPermission(",
 		"Manifest.permission.",
 	}
+
 	found := false
 	for _, file := range mainActivityFiles {
 		data, err := os.ReadFile(file)
@@ -174,10 +140,13 @@ func CheckAndroidMainActivityPermissions(projectRoot string) bool {
 			}
 		}
 	}
-	if !found {
-		fmt.Println("\n❗ MainActivity is missing code to request permissions. Example:")
-		fmt.Println(`ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)`)
+
+	if found {
+		utils.Successln("MainActivity contains code requesting permissions.")
+		return true
 	}
-	return found
+
+	utils.Failureln("MainActivity does not contain code requesting permissions.")
+	return false
 }
 
