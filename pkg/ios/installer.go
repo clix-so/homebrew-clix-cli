@@ -45,15 +45,49 @@ func InstallClixIOS(projectID, apiKey string) error {
 		updated = strings.Join(lines, "\n")
 	}
 
-	// 2. FirebaseApp.configure
-	if strings.Contains(updated, "didFinishLaunchingWithOptions") && !strings.Contains(updated, "FirebaseApp.configure") {
-		updated = strings.Replace(updated,
-			"return true",
-			"FirebaseApp.configure()\n\n        return true",
-			1)
+	// 2. Update class declaration to inherit from ClixAppDelegate
+	if !strings.Contains(updated, "ClixAppDelegate") {
+		lines := strings.Split(updated, "\n")
+		for i, line := range lines {
+			if strings.Contains(line, "class AppDelegate") {
+				// Replace the class declaration line
+				indent := ""
+				for _, ch := range line {
+					if ch == ' ' || ch == '\t' {
+						indent += string(ch)
+					} else {
+						break
+					}
+				}
+				lines[i] = indent + "class AppDelegate: ClixAppDelegate {"
+				break
+			}
+		}
+		updated = strings.Join(lines, "\n")
 	}
 
-	// 3. Clix.initialize
+	// 3. Update didFinishLaunchingWithOptions method to include override keyword
+	if strings.Contains(updated, "didFinishLaunchingWithOptions") && !strings.Contains(updated, "override func application") {
+		lines := strings.Split(updated, "\n")
+		for i, line := range lines {
+			if strings.Contains(line, "func application") && strings.Contains(line, "didFinishLaunchingWithOptions") {
+				// Add override keyword
+				indent := ""
+				for _, ch := range line {
+					if ch == ' ' || ch == '\t' {
+						indent += string(ch)
+					} else {
+						break
+					}
+				}
+				lines[i] = indent + "override " + strings.TrimSpace(line)
+				break
+			}
+		}
+		updated = strings.Join(lines, "\n")
+	}
+
+	// 4. Add Clix.initialize
 	if strings.Contains(updated, "didFinishLaunchingWithOptions") && !strings.Contains(updated, "Clix.initialize") {
 		updated = strings.Replace(updated,
 			"return true",
@@ -61,13 +95,13 @@ func InstallClixIOS(projectID, apiKey string) error {
         Task {
             await Clix.initialize(
                 config: ClixConfig(
-                    apiKey: "%s",
-                    projectId: "%s"
+                    projectId: "%s",
+                    apiKey: "%s"
                 )
             )
         }
 
-        return true`, apiKey, projectID),
+        return true`, projectID, apiKey),
 			1)
 	}
 
@@ -230,15 +264,15 @@ func createAppDelegate(projectId, apiKey string) error {
 import Clix
 import Firebase
 
-class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {
-    func application(_ application: UIApplication,
+class AppDelegate: ClixAppDelegate {
+    override func application(_ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
 
         Task {
             await Clix.initialize(
                 config: ClixConfig(
-                    apiKey: "%s",
-                    projectId: "%s"
+				    projectId: "%s",
+                    apiKey: "%s"
                 )
             )
         }
@@ -246,7 +280,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         return true
     }
 }
-`, apiKey, projectId)
+`, projectId, apiKey)
 
 	appPath, err := FindAppPath()
 	if err != nil {
