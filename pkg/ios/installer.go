@@ -87,22 +87,72 @@ func InstallClixIOS(projectID, apiKey string) error {
 		updated = strings.Join(lines, "\n")
 	}
 
-	// 4. Add Clix.initialize
-	if strings.Contains(updated, "didFinishLaunchingWithOptions") && !strings.Contains(updated, "Clix.initialize") {
-		updated = strings.Replace(updated,
-			"return true",
-			fmt.Sprintf(`
-        Task {
-            await Clix.initialize(
-                config: ClixConfig(
-                    projectId: "%s",
-                    apiKey: "%s"
-                )
-            )
-        }
+	// 4. Add FirebaseApp.configure and Clix.initialize before super.application or return true
+	if strings.Contains(updated, "didFinishLaunchingWithOptions") {
+		// Check if Firebase is already configured
+		hasFirebaseConfig := strings.Contains(updated, "FirebaseApp.configure()")
+		hasClixInit := strings.Contains(updated, "Clix.initialize")
 
-        return true`, projectID, apiKey),
-			1)
+		// If we need to add either Firebase config or Clix init
+		if !hasFirebaseConfig || !hasClixInit {
+			// Find the return statement
+			lines := strings.Split(updated, "\n")
+			returnLineIndex := -1
+			returnStatement := ""
+
+			for i, line := range lines {
+				trimmed := strings.TrimSpace(line)
+				if strings.HasPrefix(trimmed, "return ") {
+					returnLineIndex = i
+					returnStatement = trimmed
+					break
+				}
+			}
+
+			if returnLineIndex != -1 {
+				// Get indentation from the return line
+				indent := ""
+				for _, ch := range lines[returnLineIndex] {
+					if ch == ' ' || ch == '\t' {
+						indent += string(ch)
+					} else {
+						break
+					}
+				}
+
+				// Build the insertion content
+				var insertContent strings.Builder
+
+				// Add Firebase configuration if needed
+				if !hasFirebaseConfig {
+					insertContent.WriteString(indent + "FirebaseApp.configure()\n\n")
+				}
+
+				// Add Clix initialization if needed
+				if !hasClixInit {
+					insertContent.WriteString(fmt.Sprintf(indent+"Task {\n"+
+						indent+"    await Clix.initialize(\n"+
+						indent+"        config: ClixConfig(\n"+
+						indent+"            projectId: \"%s\",\n"+
+						indent+"            apiKey: \"%s\"\n"+
+						indent+"        )\n"+
+						indent+"    )\n"+
+						indent+"}\n\n", projectID, apiKey))
+				}
+
+				// Replace the return line with our insertions + the original return statement
+				lines[returnLineIndex] = insertContent.String() + indent + returnStatement
+				updated = strings.Join(lines, "\n")
+			}
+		}
+
+		// Ensure super.application is called after Firebase and Clix initialization
+		if strings.Contains(updated, "return true") && !strings.Contains(updated, "return super.application") {
+			updated = strings.Replace(updated,
+				"return true",
+				"return super.application(application, didFinishLaunchingWithOptions: launchOptions)",
+				1)
+		}
 	}
 
 	err = os.WriteFile(appPath, []byte(updated), 0644)
@@ -268,16 +318,18 @@ class AppDelegate: ClixAppDelegate {
     override func application(_ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
 
+        FirebaseApp.configure()
+
         Task {
             await Clix.initialize(
                 config: ClixConfig(
-				    projectId: "%s",
+                    projectId: "%s",
                     apiKey: "%s"
                 )
             )
         }
 
-        return true
+        return super.application(application, didFinishLaunchingWithOptions: launchOptions)
     }
 }
 `, projectId, apiKey)
