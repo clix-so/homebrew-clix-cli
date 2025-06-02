@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 )
 
-
 // HandleAndroidInstall guides the user through the Android installation checklist.
 func HandleAndroidInstall(apiKey, projectID string) {
 	fmt.Println("🤖 Installing Clix SDK for Android...")
@@ -70,16 +69,21 @@ func HandleAndroidInstall(apiKey, projectID string) {
 func CheckAndroidApplicationSetup(projectRoot string) bool {
 	javaDir := filepath.Join(projectRoot, "app", "src", "main", "java")
 	kotlinDir := filepath.Join(projectRoot, "app", "src", "main", "kotlin")
+
 	appFiles := []string{}
 	findAppFiles := func(root string) {
 		filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return nil
 			}
-			if !info.IsDir() && (filepath.Ext(path) == ".java" || filepath.Ext(path) == ".kt") &&
-				len(info.Name()) >= len("Application.java") &&
-				info.Name()[len(info.Name())-len("Application.java"):] == "Application.java" ||
-				info.Name()[len(info.Name())-len("Application.kt"):] == "Application.kt" {
+
+			extension := filepath.Ext(path)
+
+			isFile := !info.IsDir()
+			isJavaApplication := extension == ".java" && len(info.Name()) >= len("Application.java") && info.Name()[len(info.Name())-len("Application.java"):] == "Application.java"
+			isKotlinApplication := extension == ".kt" && len(info.Name()) >= len("Application.kt") && info.Name()[len(info.Name())-len("Application.kt"):] == "Application.kt"
+
+			if isFile && (isJavaApplication || isKotlinApplication) {
 				appFiles = append(appFiles, path)
 			}
 			return nil
@@ -87,6 +91,7 @@ func CheckAndroidApplicationSetup(projectRoot string) bool {
 	}
 	findAppFiles(javaDir)
 	findAppFiles(kotlinDir)
+
 	if len(appFiles) == 0 {
 		fmt.Println("\n❗ No Application class found. Please create one and register it in your AndroidManifest.xml.")
 		fmt.Println("Example (Kotlin):\n---------------------")

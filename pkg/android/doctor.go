@@ -18,10 +18,14 @@ func CheckClixCoreImport(projectRoot string) error {
 			if err != nil {
 				return nil
 			}
-			if !info.IsDir() && (filepath.Ext(path) == ".java" || filepath.Ext(path) == ".kt") &&
-				len(info.Name()) >= len("Application.java") &&
-				info.Name()[len(info.Name())-len("Application.java"):] == "Application.java" ||
-				info.Name()[len(info.Name())-len("Application.kt"):] == "Application.kt" {
+			
+			extension := filepath.Ext(path)
+
+			isFile := !info.IsDir()
+			isJavaApplication := extension == ".java" && len(info.Name()) >= len("Application.java") && info.Name()[len(info.Name())-len("Application.java"):] == "Application.java"
+			isKotlinApplication := extension == ".kt" && len(info.Name()) >= len("Application.kt") && info.Name()[len(info.Name())-len("Application.kt"):] == "Application.kt"
+
+			if isFile && (isJavaApplication || isKotlinApplication) {
 				appFiles = append(appFiles, path)
 			}
 			return nil
@@ -65,14 +69,14 @@ func CheckClixCoreImport(projectRoot string) error {
 	}
 
 	if !importFound || !initializeFound {
-		return fmt.Errorf("Application class missing required import or initialization")
+		return fmt.Errorf("application class missing required import or initialization")
 	}
 	return nil
 }
 
 // stringContainsImportClix checks if the given file content contains the import statement for so.clix.core.Clix
 func stringContainsImportClix(content string) bool {
-	return (len(content) > 0 && (Contains(content, "import so.clix.core.Clix") || Contains(content, "import so.clix.core.Clix;")))
+	return len(content) > 0 && Contains(content, "import so.clix.core.Clix")
 }
 
 // StringContainsClixInitializeInOnCreate checks if Clix.initialize(this, ...) is called inside onCreate
