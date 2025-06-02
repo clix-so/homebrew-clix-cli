@@ -44,6 +44,15 @@ func HandleAndroidInstall(apiKey, projectID string) {
 			fmt.Println("[FAIL] Could not automatically add Clix SDK dependency. Please add it manually.")
 		}
 	}
+	pluginOK := CheckGradlePlugin(projectRoot)
+	if !pluginOK {
+		if AddGradlePlugin(projectRoot) {
+			fmt.Println("[AUTO-FIX] Added 'id(\"com.google.gms.google-services\") version \"4.4.2\"' to your app/build.gradle(.kts).")
+			pluginOK = true
+		} else {
+			fmt.Println("[FAIL] Could not automatically add Google services plugin. Please add it manually.")
+		}
+	}
 
 	// 3. Check Application class for Clix import and initialization
 	appOK := CheckAndroidApplicationSetup(projectRoot)

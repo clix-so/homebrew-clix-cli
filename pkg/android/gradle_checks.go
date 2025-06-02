@@ -46,13 +46,39 @@ func AddGradleDependency(projectRoot string) bool {
 			continue
 		}
 		content := string(data)
-		if Contains(content, "implementation(\"so.clix:clix-android-sdk:0.0.2\")") {
+		if Contains(content, "implementation(\"so.clix:clix-android-sdk") {
 			return true // already present
 		}
 		// Try to insert after 'dependencies {' or at end
 		if idx := IndexOf(content, "dependencies {"); idx != -1 {
 			insertAt := idx + len("dependencies {")
 			newContent := content[:insertAt] + "\n    implementation(\"so.clix:clix-android-sdk:0.0.2\")" + content[insertAt:]
+			err = ioutil.WriteFile(file, []byte(newContent), 0644)
+			return err == nil
+		}
+	}
+	return false
+}
+
+// AddGradlePlugin tries to insert the Google services plugin into app/build.gradle(.kts)
+func AddGradlePlugin(projectRoot string) bool {
+	gradleFiles := []string{
+		filepath.Join(projectRoot, "app", "build.gradle"),
+		filepath.Join(projectRoot, "app", "build.gradle.kts"),
+	}
+	for _, file := range gradleFiles {
+		data, err := ioutil.ReadFile(file)
+		if err != nil {
+			continue
+		}
+		content := string(data)
+		if Contains(content, "id(\"com.google.gms.google-services\")") {
+			return true // already present
+		}
+		// Try to insert after 'dependencies {' or at end
+		if idx := IndexOf(content, "plugins {"); idx != -1 {
+			insertAt := idx + len("plugins {")
+			newContent := content[:insertAt] + "\n    id(\"com.google.gms.google-services\") version \"4.4.2\"" + content[insertAt:]
 			err = ioutil.WriteFile(file, []byte(newContent), 0644)
 			return err == nil
 		}
@@ -125,5 +151,40 @@ func CheckGradleDependency(projectRoot string) bool {
 
 	fmt.Println("[FAIL] Clix SDK dependency not found in app/build.gradle(.kts). Please add:")
 	fmt.Println(`dependencies {\n    implementation(\"so.clix:clix-android-sdk:0.0.2\")\n}`)
+	return false
+}
+
+// CheckGradlePlugin checks if com.google.gms:google-services is present in app/build.gradle(.kts)
+func CheckGradlePlugin(projectRoot string) bool {
+	gradleFiles := []string{
+		filepath.Join(projectRoot, "app", "build.gradle"),
+		filepath.Join(projectRoot, "app", "build.gradle.kts"),
+	}
+
+	found := false
+	for _, file := range gradleFiles {
+		data, err := ioutil.ReadFile(file)
+		if err != nil {
+			continue
+		}
+
+		content := string(data)
+		if Contains(content, "alias(libs.plugins.gms") {
+			found = true
+			break
+		}
+		if Contains(content, "id(\"com.google.gms.google-services\")") {
+			found = true
+			break
+		}
+	}
+
+	if found {
+		fmt.Println("[OK] Google services plugin found in app/build.gradle(.kts).")
+		return true
+	}
+
+	fmt.Println("[FAIL] Google services plugin not found in app/build.gradle(.kts). Please add:")
+	fmt.Println(`plugins {\n    id(\"com.google.gms.google-services\") version \"4.4.2\"\n}`)
 	return false
 }

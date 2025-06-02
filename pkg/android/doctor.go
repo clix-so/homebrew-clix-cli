@@ -201,6 +201,9 @@ func RunDoctor(projectRoot string) {
 	if !CheckGradleDependency(projectRoot) {
 		errs = append(errs, fmt.Errorf("Clix SDK dependency not found in app/build.gradle(.kts)"))
 	}
+	if !CheckGradlePlugin(projectRoot) {
+		errs = append(errs, fmt.Errorf("Google services plugin not found in app/build.gradle(.kts)"))
+	}
 
 	// 2. Check Clix core import in Application class
 	if err := CheckClixCoreImport(projectRoot); err != nil {
