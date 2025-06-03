@@ -69,14 +69,27 @@ func HandleAndroidInstall(apiKey, projectID string) {
 	fmt.Println()
 
 	utils.TitlelnWithSpinner("Checking Clix SDK initialization...")
-	appOK := CheckClixCoreImport(projectRoot)
+	appOK, code := CheckClixCoreImport(projectRoot)
 	if !appOK {
-		if AddClixInitializationToApplication(projectRoot, apiKey, projectID) {
-			utils.BranchSuccessln("Fixed: Automatically fixed")
-			appOK = true
+		if code == "missing-application" {
+			ok, message := AddApplication(projectRoot, apiKey, projectID)
+			if ok {
+				utils.BranchSuccessln("Fixed: Application class created successfully")
+				appOK = true
+			} else {
+				utils.BranchFailureln("Could not fix automatically. " + message)
+			}
+		} else if code == "missing-content" {
+			ok := AddClixInitializationToApplication(projectRoot, apiKey, projectID)
+			if ok {
+				utils.BranchSuccessln("Fixed: Clix SDK initialization added to Application class")
+				appOK = true
+			} else {
+				utils.BranchFailureln("Could not fix automatically. Please ensure your Application class initializes Clix SDK.")
+			}
 		} else {
-			utils.BranchFailureln("Could not fix automatically. Please add the following to your Application(.kt or .java):")
-			// TODO: add example code snippet
+			utils.BranchFailureln("Could not fix automatically. Please follow the guide below to set up your Application class:")
+		    utils.Indentln("https://docs.clix.so/sdk-quickstart-android#setup-clix-manual-installation", 6)
 		}
 	}
 	fmt.Println()
@@ -84,7 +97,9 @@ func HandleAndroidInstall(apiKey, projectID string) {
 	utils.TitlelnWithSpinner("Checking permission request...")
 	mainActivityOK := CheckAndroidMainActivityPermissions(projectRoot)
 	if !mainActivityOK {
-		fmt.Println(`ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)`)
+		utils.BranchFailureln("Could not fix automatically. Please add the following to your MainActivity.kt or MainActivity.java:")
+		fmt.Println()
+		utils.Grayln(`      ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)`)
 	}
 	fmt.Println()
 
@@ -176,8 +191,85 @@ func AddGradlePlugin(projectRoot string) bool {
 	return false
 }
 
+func AddApplicationFile(projectRoot, apiKey, projectID string) (bool, string) {
+	sourceDir := GetSourceDirPath(projectRoot)
+	if sourceDir == "" {
+		return false, "Could not find source directory for Android project."
+	}
+
+	appBuildGradlePath := GetAppBuildGradlePath(projectRoot)
+	if appBuildGradlePath == "" {
+		return false, "Could not find app/build.gradle(.kts) file."
+	}
+
+	packageName := GetPackageName(projectRoot)
+	if packageName == "" {
+		return false, "Could not extract package name from app/build.gradle(.kts)."
+	}
+
+	filePath := filepath.Join(sourceDir, "BasicApplication.kt")
+	code := `package %s
+
+import android.app.Application
+import so.clix.core.Clix
+import so.clix.core.ClixConfig
+
+class BasicApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        Clix.initialize(this, ClixConfig(
+			projectId = "%s",
+            apiKey = "%s",
+        ))
+    }
+}`
+	code = fmt.Sprintf(code, packageName, projectID, apiKey)
+
+	err := os.WriteFile(filePath, []byte(code), 0644)
+	if err != nil {
+		return false, err.Error()
+	}
+
+	return true, "Application class created successfully"
+}
+
+func AddApplicationNameToMenifest(projectRoot string) (bool, string) {
+	manifestPath := GetAndroidManifestPath(projectRoot)
+
+	data, err := ioutil.ReadFile(manifestPath)
+	if err != nil {
+		return false, "Failed to read AndroidManifest.xml"
+	}
+	content := string(data)
+
+	newContent := strings.Replace(content, "<application", `<application android:name=".BasicApplication"`, 1)
+	err = ioutil.WriteFile(manifestPath, []byte(newContent), 0644)
+	if err != nil {
+		return false, "Failed to write AndroidManifest.xml"
+	}
+
+	return true, "Application name added to AndroidManifest.xml"
+}
+
+func AddApplication(projectRoot, apiKey, projectID string) (bool, string) {
+	// Step 1: Create BasicApplication.kt file
+	ok, message := AddApplicationFile(projectRoot, apiKey, projectID)
+	if !ok {
+		return false, message
+	}
+
+	// Step 2: Add application name to AndroidManifest.xml
+	ok, message = AddApplicationNameToMenifest(projectRoot)
+	if !ok {
+		return false, message
+	}
+
+	return true, "Application class setup complete"
+}
+
 // AddClixInitializationToApplication inserts Clix SDK initialization code into the Application.kt if missing
-func AddClixInitializationToApplication(projectRoot, apiKey, projectID string) bool { // TODO: test
+// FIXME(@nyanxyz): Does not work properly yet
+func AddClixInitializationToApplication(projectRoot, apiKey, projectID string) bool {
 	kotlinDir := filepath.Join(projectRoot, "app", "src", "main", "kotlin")
 	found := false
 	err := filepath.Walk(kotlinDir, func(path string, info os.FileInfo, err error) error {

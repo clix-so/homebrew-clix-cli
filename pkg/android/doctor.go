@@ -94,19 +94,15 @@ func RunDoctor(projectRoot string) {
 	CheckClixCoreImport(projectRoot)
 	fmt.Println()
 
-	// 3. Check permission request in MainActivity
 	utils.TitlelnWithSpinner("Checking permission request...")
 	if !CheckAndroidMainActivityPermissions(projectRoot) {
 		utils.Indentln("To fix this, add the following to MainActivity.java or MainActivity.kt:", 3)
 		fmt.Println()
-		utils.Grayln(`ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)`)
+		utils.Grayln(`   ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)`)
 	}
 	fmt.Println()
 
-	// 4. Check google-services.json existence
 	utils.TitlelnWithSpinner("Checking google-services.json...")
 	CheckGoogleServicesJSON(projectRoot)
 	fmt.Println()
 }
-
-

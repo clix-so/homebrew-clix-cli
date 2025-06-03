@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/clix-so/clix-cli/pkg/utils"
 )
@@ -43,28 +44,27 @@ func CheckGradleRepository(projectRoot string) bool {
 
 // CheckGradleDependency checks if so.clix:clix-android-sdk is present in app/build.gradle(.kts)
 func CheckGradleDependency(projectRoot string) bool {
-	gradleFiles := []string{
-		filepath.Join(projectRoot, "app", "build.gradle"),
-		filepath.Join(projectRoot, "app", "build.gradle.kts"),
+	appBuildGradleFilePath := GetAppBuildGradlePath(projectRoot)
+
+	if appBuildGradleFilePath == "" {
+		utils.Failureln("app/build.gradle(.kts) not found.")
+		return false
 	}
 
 	found := false
-	for _, file := range gradleFiles {
-		data, err := ioutil.ReadFile(file)
-		if err != nil {
-			continue
-		}
-
-		content := string(data)
-		if Contains(content, "implementation(\"so.clix:clix-android-sdk:") {
-			found = true
-			break
-		}
-		if Contains(content, "implementation(libs.clix.android.sdk)") {
-			found = true
-			break
-		}
+	data, err := ioutil.ReadFile(appBuildGradleFilePath)
+	if err != nil {
+		utils.Failureln("Failed to read app/build.gradle(.kts)")
+		return false
 	}
+
+	content := string(data)
+	if Contains(content, "implementation(\"so.clix:clix-android-sdk:") {
+		found = true
+	} else if Contains(content, "implementation(libs.clix.android.sdk)") {
+		found = true
+	}
+	
 
 	if (found) {
 		utils.Successln("Clix SDK dependency found.")
@@ -110,53 +110,55 @@ func CheckGradlePlugin(projectRoot string) bool {
 }
 
 // CheckClixCoreImport checks if any Application class imports so.clix.core.Clix (Java or Kotlin).
-func CheckClixCoreImport(projectRoot string) bool {
-	javaDir := filepath.Join(projectRoot, "app", "src", "main", "java")
-	kotlinDir := filepath.Join(projectRoot, "app", "src", "main", "kotlin")
-	appFiles := []string{}
+func CheckClixCoreImport(projectRoot string) (bool, string) {
+	manifestPath := filepath.Join(projectRoot, "app", "src", "main", "AndroidManifest.xml")
+	appName, err := extractApplicationClassName(manifestPath)
 
-	// Helper: recursively find *Application.java and *Application.kt
-	findAppFiles := func(root string) {
-		filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return nil
-			}
-			
-			extension := filepath.Ext(path)
-
-			isFile := !info.IsDir()
-			isJavaApplication := extension == ".java" && len(info.Name()) >= len("Application.java") && info.Name()[len(info.Name())-len("Application.java"):] == "Application.java"
-			isKotlinApplication := extension == ".kt" && len(info.Name()) >= len("Application.kt") && info.Name()[len(info.Name())-len("Application.kt"):] == "Application.kt"
-
-			if isFile && (isJavaApplication || isKotlinApplication) {
-				appFiles = append(appFiles, path)
-			}
-			return nil
-		})
+	if err != nil {
+		utils.Failureln("Failed to read AndroidManifest.xml")
+		return false, "unknown"
 	}
 
-	findAppFiles(javaDir)
-	findAppFiles(kotlinDir)
+	if appName == "" {
+		utils.Failureln("No Application class found in AndroidManifest.xml")
+		return false, "missing-application"
+	}
 
-	if len(appFiles) == 0 {
-		utils.Warnln("No Application class found under app/src/main/java or app/src/main/kotlin.") // TODO: add following action
-		return false
+	appPath := strings.TrimPrefix(appName, ".")
+	appPath = strings.ReplaceAll(appPath, ".", string(filepath.Separator))
+
+	sourceDir := GetSourceDirPath(projectRoot)
+	if sourceDir == "" {
+		utils.Failureln("Source directory not found.")
+		return false, "unknown"
+	}
+
+	ktPath := filepath.Join(sourceDir, appPath + ".kt")
+	javaPath := filepath.Join(sourceDir, appPath + ".java")
+
+	if _, err := os.Stat(javaPath); err == nil {
+		appPath = javaPath
+	} else if _, err := os.Stat(ktPath); err == nil {
+		appPath = ktPath
+	} else {
+		utils.Failureln("Application class not found in expected locations.")
+		return false, "unknown"
 	}
 
 	importFound := false
 	initializeFound := false
-	for _, file := range appFiles {
-		data, err := os.ReadFile(file)
-		if err != nil {
-			continue
-		}
-		content := string(data)
-		if stringContainsImportClix(content) {
-			importFound = true
-		}
-		if StringContainsClixInitializeInOnCreate(content) {
-			initializeFound = true
-		}
+
+	data, err := os.ReadFile(appPath)
+	if err != nil {
+		utils.Failureln("Failed to read Application class file")
+		return false, "unknown"
+	}
+	content := string(data)
+	if stringContainsImportClix(content) {
+		importFound = true
+	}
+	if StringContainsClixInitializeInOnCreate(content) {
+		initializeFound = true
 	}
 
 	if importFound {
@@ -172,10 +174,10 @@ func CheckClixCoreImport(projectRoot string) bool {
 	}
 
 	if !importFound || !initializeFound {
-		return false
+		return false, "missing-content"
 	}
 
-	return true
+	return true, ""
 }
 
 // CheckAndroidMainActivityPermissions checks MainActivity for permission request code, prints instructions if missing
