@@ -42,10 +42,10 @@ func DetectPlatform() (isIOS, isAndroid bool) {
 	isAndroid = androidSignals >= 1
 
 	if isIOS {
-		fmt.Println("iOS project detected")
+		fmt.Print("📦 iOS project detected\n\n")
 	}
 	if isAndroid {
-		fmt.Println("Android project detected")
+		fmt.Print("📦 Android project detected\n\n")
 	}
 
 	return

@@ -43,6 +43,7 @@ for any issues found.`,
 
 		if doctorAndroidFlag {
 			fmt.Println("🔍 Checking Clix SDK integration for Android...")
+			utils.Separatorln()
 			android.RunDoctor("") // pass project root if needed, or ""
 		}
 
