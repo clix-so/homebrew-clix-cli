@@ -235,9 +235,9 @@ func handleAndroidInstall() {
 	fmt.Println("🤖 Installing Clix SDK for Android...")
 	utils.Separatorln()
 
-	apiKey := utils.Prompt("Enter your Public API Key")
 	projectID := utils.Prompt("Enter your Project ID")
-
+	apiKey := utils.Prompt("Enter your Public API Key")
+	
 	android.HandleAndroidInstall(apiKey, projectID)
 	fmt.Println()
 
