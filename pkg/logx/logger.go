@@ -29,7 +29,7 @@ func (l *Logger) Indent(n int) *Logger {
 }
 
 func (l *Logger) Branch() *Logger {
-	l.prefix = " └ " + l.prefix
+	l.prefix = l.prefix + " └ "
 	return l
 }
 
@@ -54,12 +54,12 @@ func (l *Logger) Title() *Logger {
 }
 
 func (l *Logger) Success() *Logger {
-	l.prefix = "✅ " + l.prefix
+	l.prefix = l.prefix + "✅ "
 	return l
 }
 
 func (l *Logger) Failure() *Logger {
-	l.prefix = "❌ " + l.prefix
+	l.prefix = l.prefix + "❌ "
 	return l
 }
 

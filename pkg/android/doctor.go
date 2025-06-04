@@ -55,7 +55,7 @@ func IndexOf(s, substr string) int {
 func RunDoctor(projectRoot string) {
 	logx.Log().WithSpinner().Title().Println(logx.TitleGradleRepoCheck)
 	if !CheckGradleRepository(projectRoot) {
-		logx.Log().Indent(3).Println(logx.FixGradleRepo)
+		logx.Log().Branch().Println(logx.FixGradleRepo)
 		logx.NewLine()
 		logx.Log().Indent(3).Code().Println(logx.CodeGradleRepo)
 	}
@@ -63,7 +63,7 @@ func RunDoctor(projectRoot string) {
 
 	logx.Log().WithSpinner().Title().Println(logx.TitleClixDependencyCheck)
 	if !CheckGradleDependency(projectRoot) {
-		logx.Log().Indent(3).Println(logx.FixClixDependency)
+		logx.Log().Branch().Println(logx.FixClixDependency)
 		logx.NewLine()
 		logx.Log().Indent(3).Code().Println(logx.CodeClixDependency)
 	}
@@ -71,23 +71,31 @@ func RunDoctor(projectRoot string) {
 
 	logx.Log().WithSpinner().Title().Println(logx.TitleGmsPluginCheck)
 	if !CheckGradlePlugin(projectRoot) {
-		logx.Log().Indent(3).Println(logx.FixGmsPlugin)
+		logx.Log().Branch().Println(logx.FixGmsPlugin)
 		logx.NewLine()
 		logx.Log().Indent(3).Code().Println(logx.CodeGmsPlugin)
 	}
 	logx.NewLine()
 
 	logx.Log().WithSpinner().Title().Println(logx.TitleClixInitializationCheck)
-	CheckClixCoreImport(projectRoot)
+	ok, _ := CheckClixCoreImport(projectRoot)
+	if !ok {
+		logx.Log().Branch().Println(logx.FixClixInitialization)
+		logx.Log().Indent(3).Code().Println(logx.ClixInitializationLink)
+	}
 	logx.NewLine()
 
 	logx.Log().WithSpinner().Title().Println(logx.TitlePermissionCheck)
 	if !CheckAndroidMainActivityPermissions(projectRoot) {
-		logx.Log().Indent(3).Println(logx.FixPermissionRequest)
+		logx.Log().Branch().Println(logx.FixPermissionRequest)
+		logx.Log().Indent(3).Code().Println(logx.PermissionRequestLink)
 	}
 	logx.NewLine()
 
 	logx.Log().WithSpinner().Title().Println(logx.TitleGoogleServicesJsonCheck)
-	CheckGoogleServicesJSON(projectRoot)
+	if !CheckGoogleServicesJSON(projectRoot) {
+		logx.Log().Branch().Println(logx.FixGoogleServicesJson)
+		logx.Log().Indent(3).Code().Println(logx.GoogleServicesJsonLink)
+	}
 	logx.NewLine()
 }

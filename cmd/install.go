@@ -239,9 +239,6 @@ func handleAndroidInstall() {
 	projectID := utils.Prompt("Enter your Project ID")
 	apiKey := utils.Prompt("Enter your Public API Key")
 	
+	logx.NewLine()
 	android.HandleAndroidInstall(apiKey, projectID)
-	fmt.Println()
-
-	// fmt.Println("\n🔍 Running doctor to verify Clix SDK and push notification setup...")
-	// android.RunDoctor("")
 }

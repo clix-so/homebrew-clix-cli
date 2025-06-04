@@ -227,7 +227,6 @@ func CheckGoogleServicesJSON(projectRoot string) bool {
 	gsPath := filepath.Join(projectRoot, "app", "google-services.json")
 	if _, err := os.Stat(gsPath); os.IsNotExist(err) {
 		logx.Log().Failure().Println(logx.MsgGoogleJsonMissing)
-		logx.Log().Indent(3).Println(logx.MsgGoogleJsonGuideLink)
 		return false
 	}
 

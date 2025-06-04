@@ -20,6 +20,8 @@ func HandleAndroidInstall(apiKey, projectID string) {
 
 	logx.Log().WithSpinner().Title().Println(logx.TitleGoogleServicesJsonCheck)
 	if !CheckGoogleServicesJSON(projectRoot) {
+		logx.Log().Branch().Failure().Println(logx.MsgGoogleJsonFixFailure)
+		logx.Log().Indent(6).Code().Println(logx.GoogleServicesJsonLink)
 		return
 	}
 	logx.NewLine()
@@ -32,6 +34,7 @@ func HandleAndroidInstall(apiKey, projectID string) {
 		} else {
 			logx.Log().Branch().Failure().Println(logx.MsgGradleRepoFixFailure)
 		}
+		logx.NewLine()
 		logx.Log().Indent(6).Code().Println(logx.CodeGradleRepo)
 	}
 	logx.NewLine()
@@ -45,9 +48,10 @@ func HandleAndroidInstall(apiKey, projectID string) {
 		} else {
 			logx.Log().Branch().Failure().Println(logx.MsgClixDependencyFixFailure)
 		}
+		logx.NewLine()
 		logx.Log().Indent(6).Code().Println(logx.CodeClixDependency)
 	}
-	fmt.Println()
+	logx.NewLine()
 
 	logx.Log().WithSpinner().Println(logx.TitleGmsPluginCheck)
 	pluginOK := CheckGradlePlugin(projectRoot)
@@ -58,9 +62,10 @@ func HandleAndroidInstall(apiKey, projectID string) {
 		} else {
 			logx.Log().Branch().Failure().Println(logx.MsgGmsPluginFixFailure)
 		}
+		logx.NewLine()
 		logx.Log().Indent(6).Code().Println(logx.CodeGmsPlugin)
 	}
-	fmt.Println()
+	logx.NewLine()
 
 	logx.Log().WithSpinner().Println(logx.TitleClixInitializationCheck)
 	appOK, code := CheckClixCoreImport(projectRoot)
@@ -68,30 +73,25 @@ func HandleAndroidInstall(apiKey, projectID string) {
 		if code == "missing-application" {
 			ok, _ := AddApplication(projectRoot, apiKey, projectID)
 			if ok {
-				logx.Log().Branch().Success().Println(logx.MsgAppCreateSuccess)
 				appOK = true
-			} else {
-				logx.Log().Branch().Failure().Println(logx.MsgAppCannotFix)
 			}
-		} else {
-			logx.Log().Branch().Failure().Println(logx.MsgAppCannotFix)
-		    logx.Log().Indent(6).Println(logx.MsgAppManualGuideLink)
 		}
 	}
-	fmt.Println()
+	if appOK {
+		logx.Log().Branch().Success().Println(logx.MsgAppCreateSuccess)
+	} else {
+		logx.Log().Branch().Failure().Println(logx.MsgAppFixFailure)
+		logx.Log().Indent(6).Code().Println(logx.ClixInitializationLink)
+	}
+	logx.NewLine()
 
 	logx.Log().WithSpinner().Println(logx.TitlePermissionCheck)
 	mainActivityOK := CheckAndroidMainActivityPermissions(projectRoot)
 	if !mainActivityOK {
-		logx.Log().Branch().Failure().Println(logx.MsgPermissionMissing)
+		logx.Log().Branch().Failure().Println(logx.MsgPermissionFixFailure)
+		logx.Log().Indent(6).Code().Println(logx.PermissionRequestLink)
 	}
-	fmt.Println()
-
-	if repoOK && depOK && appOK && mainActivityOK {
-		logx.Log().Success().Println("Clix SDK installation checklist complete! Your Android project is ready.")
-	} else {
-		logx.Log().Failure().Println("Please address the above issues and re-run 'clix install --android' or 'clix doctor --android'.")
-	}
+	logx.NewLine()
 }
 
 
