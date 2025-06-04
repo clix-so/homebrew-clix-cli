@@ -6,6 +6,7 @@ import (
 
 	"github.com/clix-so/clix-cli/pkg/android"
 	"github.com/clix-so/clix-cli/pkg/ios"
+	"github.com/clix-so/clix-cli/pkg/logx"
 	"github.com/clix-so/clix-cli/pkg/utils"
 	"github.com/spf13/cobra"
 )
@@ -43,7 +44,7 @@ for any issues found.`,
 
 		if doctorAndroidFlag {
 			fmt.Println("🔍 Checking Clix SDK integration for Android...")
-			utils.Separatorln()
+			logx.Separatorln()
 			android.RunDoctor("") // pass project root if needed, or ""
 		}
 

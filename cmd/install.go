@@ -8,6 +8,7 @@ import (
 
 	"github.com/clix-so/clix-cli/pkg/android"
 	"github.com/clix-so/clix-cli/pkg/ios"
+	"github.com/clix-so/clix-cli/pkg/logx"
 	"github.com/clix-so/clix-cli/pkg/utils"
 	"github.com/spf13/cobra"
 )
@@ -233,7 +234,7 @@ func detectPackageManager() (usingSPM bool, usingCocoaPods bool) {
 // Function to handle Android installation
 func handleAndroidInstall() {
 	fmt.Println("🤖 Installing Clix SDK for Android...")
-	utils.Separatorln()
+	logx.Separatorln()
 
 	projectID := utils.Prompt("Enter your Project ID")
 	apiKey := utils.Prompt("Enter your Public API Key")

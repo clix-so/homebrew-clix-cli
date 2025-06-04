@@ -7,106 +7,106 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/clix-so/clix-cli/pkg/utils"
+	"github.com/clix-so/clix-cli/pkg/logx"
 )
 
 // HandleAndroidInstall guides the user through the Android installation checklist.
 func HandleAndroidInstall(apiKey, projectID string) {
 	projectRoot, err := os.Getwd()
 	if err != nil {
-		utils.Failureln("Could not determine working directory.") // TODO: revisit this
+		logx.Log().Failure().Println("Could not determine working directory.")
 		return
 	}
 
-	utils.TitlelnWithSpinner("Checking google-services.json...")
+	logx.Log().WithSpinner().Title().Println("Checking google-services.json...")
 	if !CheckGoogleServicesJSON(projectRoot) {
 		return
 	}
-	fmt.Println()
+	logx.NewLine()
 
-	utils.TitlelnWithSpinner("Checking Gradle repository settings...")
+	logx.Log().WithSpinner().Title().Println("Checking Gradle repository settings...")
 	repoOK := CheckGradleRepository(projectRoot)
 	if !repoOK {
 		if AddGradleRepository(projectRoot) {
-			utils.BranchSuccessln("Fixed: Automatically added")
+			logx.Log().Branch().Success().Println("Fixed: Automatically added")
 		} else {
-			utils.BranchFailureln("Could not fix automatically. Please add the following manually to settings.gradle(.kts) or build.gradle(.kts):")
+			logx.Log().Branch().Failure().Println("Could not fix automatically. Please add the following manually to settings.gradle(.kts) or build.gradle(.kts):")
 		}
-		utils.Grayln(`      repositories {
-          mavenCentral()
-      }`)
+		logx.Log().Indent(6).Code().Println(`repositories {
+	mavenCentral()
+}`)
 	}
-	fmt.Println()
+	logx.NewLine()
 
-	utils.TitlelnWithSpinner("Checking for Clix SDK dependency...")
+	logx.Log().WithSpinner().Println("Checking for Clix SDK dependency...")
 	depOK := CheckGradleDependency(projectRoot)
 	if !depOK {
 		if AddGradleDependency(projectRoot) {
-			utils.BranchSuccessln("Fixed: Automatically added")
+			logx.Log().Branch().Success().Println("Fixed: Automatically added")
 			depOK = true
 		} else {
-			utils.BranchFailureln("Could not fix automatically. Please add the following manually to app/build.gradle(.kts):")
+			logx.Log().Branch().Failure().Println("Could not fix automatically. Please add the following manually to app/build.gradle(.kts):")
 		}
-		utils.Grayln(`      dependencies {
-          implementation("so.clix:clix-android-sdk:1.0.0")
-      }`)
+		logx.Log().Indent(6).Code().Println(`dependencies {
+	implementation("so.clix:clix-android-sdk:1.0.0")
+}`)
 	}
 	fmt.Println()
 
-	utils.TitlelnWithSpinner("Checking for Google Services plugin...")
+	logx.Log().WithSpinner().Println("Checking for Google Services plugin...")
 	pluginOK := CheckGradlePlugin(projectRoot)
 	if !pluginOK {
 		if AddGradlePlugin(projectRoot) {
-			utils.BranchSuccessln("Fixed: Automatically added")
+			logx.Log().Branch().Success().Println("Fixed: Automatically added")
 			pluginOK = true
 		} else {
-			utils.BranchFailureln("Could not fix automatically. Please add the following manually to build.gradle(.kts):")
+			logx.Log().Branch().Failure().Println("Could not fix automatically. Please add the following manually to build.gradle(.kts):")
 		}
-		utils.Grayln(`      plugins {
-          id("com.google.gms.google-services") version "4.4.2"
-      }`)
+		logx.Log().Indent(6).Code().Println(`plugins {
+	id("com.google.gms.google-services") version "4.4.2"
+}`)
 	}
 	fmt.Println()
 
-	utils.TitlelnWithSpinner("Checking Clix SDK initialization...")
+	logx.Log().WithSpinner().Println("Checking Clix SDK initialization...")
 	appOK, code := CheckClixCoreImport(projectRoot)
 	if !appOK {
 		if code == "missing-application" {
 			ok, message := AddApplication(projectRoot, apiKey, projectID)
 			if ok {
-				utils.BranchSuccessln("Fixed: Application class created successfully")
+				logx.Log().Branch().Success().Println("Fixed: Application class created successfully")
 				appOK = true
 			} else {
-				utils.BranchFailureln("Could not fix automatically. " + message)
+				logx.Log().Branch().Failure().Println("Could not fix automatically. " + message)
 			}
 		} else if code == "missing-content" {
 			ok := AddClixInitializationToApplication(projectRoot, apiKey, projectID)
 			if ok {
-				utils.BranchSuccessln("Fixed: Clix SDK initialization added to Application class")
+				logx.Log().Branch().Success().Println("Fixed: Clix SDK initialization added to Application class")
 				appOK = true
 			} else {
-				utils.BranchFailureln("Could not fix automatically. Please ensure your Application class initializes Clix SDK.")
+				logx.Log().Branch().Failure().Println("Could not fix automatically. Please ensure your Application class initializes Clix SDK.")
 			}
 		} else {
-			utils.BranchFailureln("Could not fix automatically. Please follow the guide below to set up your Application class:")
-		    utils.Indentln("https://docs.clix.so/sdk-quickstart-android#setup-clix-manual-installation", 6)
+			logx.Log().Branch().Failure().Println("Could not fix automatically. Please follow the guide below to set up your Application class:")
+		    logx.Log().Indent(6).Println("https://docs.clix.so/sdk-quickstart-android#setup-clix-manual-installation")
 		}
 	}
 	fmt.Println()
 
-	utils.TitlelnWithSpinner("Checking permission request...")
+	logx.Log().WithSpinner().Println("Checking permission request...")
 	mainActivityOK := CheckAndroidMainActivityPermissions(projectRoot)
 	if !mainActivityOK {
-		utils.BranchFailureln("Could not fix automatically. Please add the following to your MainActivity.kt or MainActivity.java:")
+		logx.Log().Branch().Failure().Println("Could not fix automatically. Please add the following to your MainActivity.kt or MainActivity.java:")
 		fmt.Println()
-		utils.Grayln(`      ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)`)
+		logx.Log().Indent(6).Code().Println(`ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)`)
 	}
 	fmt.Println()
 
 	if repoOK && depOK && appOK && mainActivityOK {
-		utils.Successln("Clix SDK installation checklist complete! Your Android project is ready.")
+		logx.Log().Success().Println("Clix SDK installation checklist complete! Your Android project is ready.")
 	} else {
-		utils.Failureln("Please address the above issues and re-run 'clix install --android' or 'clix doctor --android'.")
+		logx.Log().Failure().Println("Please address the above issues and re-run 'clix install --android' or 'clix doctor --android'.")
 	}
 }
 

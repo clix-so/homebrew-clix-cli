@@ -1,9 +1,7 @@
 package android
 
 import (
-	"fmt"
-
-	"github.com/clix-so/clix-cli/pkg/utils"
+	"github.com/clix-so/clix-cli/pkg/logx"
 )
 
 // stringContainsImportClix checks if the given file content contains the import statement for so.clix.core.Clix
@@ -60,49 +58,49 @@ func IndexOf(s, substr string) int {
 
 // RunDoctor runs all Android doctor checks.
 func RunDoctor(projectRoot string) {
-	utils.TitlelnWithSpinner("Checking Gradle repository settings...")
+	logx.Log().WithSpinner().Title().Println("Checking Gradle repository settings...")
 	if !CheckGradleRepository(projectRoot) {
-		utils.Indentln("To fix this, add the following to settings.gradle(.kts) or build.gradle(.kts):", 3)
-		fmt.Println()
-		utils.Grayln(`   repositories {
-	   mavenCentral()
-   }`)
+		logx.Log().Indent(3).Println("To fix this, add the following to settings.gradle(.kts) or build.gradle(.kts):")
+		logx.NewLine()
+		logx.Log().Indent(3).Code().Println(`repositories {
+	mavenCentral()
+}`)
 	}
-	fmt.Println()
+	logx.NewLine()
 
-	utils.TitlelnWithSpinner("Checking for Clix SDK dependency...")
+	logx.Log().WithSpinner().Title().Println("Checking for Clix SDK dependency...")
 	if !CheckGradleDependency(projectRoot) {
-		utils.Indentln("To fix this, add the following to app/build.gradle(.kts):", 3)
-		fmt.Println()
-		utils.Grayln(`   dependencies {
-       implementation("so.clix:clix-android-sdk:0.0.2")
-   }`)
+		logx.Log().Indent(3).Println("To fix this, add the following to app/build.gradle(.kts):")
+		logx.NewLine()
+		logx.Log().Indent(3).Code().Println(`dependencies {
+    implementation("so.clix:clix-android-sdk:0.0.2")
+}`)
 	}
-	fmt.Println()
+	logx.NewLine()
 
-	utils.TitlelnWithSpinner("Checking for Google Services plugin...")
+	logx.Log().WithSpinner().Title().Println("Checking for Google Services plugin...")
 	if !CheckGradlePlugin(projectRoot) {
-		utils.Indentln("To fix this, add the following to build.gradle(.kts):", 3)
-		fmt.Println()
-		utils.Grayln(`   plugins {
-       id("com.google.gms.google-services") version "4.4.2"
-   }`)
+		logx.Log().Indent(3).Println("To fix this, add the following to build.gradle(.kts):")
+		logx.NewLine()
+		logx.Log().Indent(3).Code().Println(`plugins {
+	id("com.google.gms.google-services") version "4.4.2"
+}`)
 	}
-	fmt.Println()
+	logx.NewLine()
 
-	utils.TitlelnWithSpinner("Checking Clix SDK initialization...")
+	logx.Log().WithSpinner().Title().Println("Checking Clix SDK initialization...")
 	CheckClixCoreImport(projectRoot)
-	fmt.Println()
+	logx.NewLine()
 
-	utils.TitlelnWithSpinner("Checking permission request...")
+	logx.Log().WithSpinner().Title().Println("Checking permission request...")
 	if !CheckAndroidMainActivityPermissions(projectRoot) {
-		utils.Indentln("To fix this, add the following to MainActivity.java or MainActivity.kt:", 3)
-		fmt.Println()
-		utils.Grayln(`   ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)`)
+		logx.Log().Indent(3).Println("To fix this, add the following to MainActivity.java or MainActivity.kt:")
+		logx.NewLine()
+		logx.Log().Indent(3).Code().Println(`ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)`)
 	}
-	fmt.Println()
+	logx.NewLine()
 
-	utils.TitlelnWithSpinner("Checking google-services.json...")
+	logx.Log().WithSpinner().Title().Println("Checking google-services.json...")
 	CheckGoogleServicesJSON(projectRoot)
-	fmt.Println()
+	logx.NewLine()
 }
