@@ -4,11 +4,6 @@ import (
 	"github.com/clix-so/clix-cli/pkg/logx"
 )
 
-// stringContainsImportClix checks if the given file content contains the import statement for so.clix.core.Clix
-func stringContainsImportClix(content string) bool {
-	return len(content) > 0 && Contains(content, "import so.clix.core.Clix")
-}
-
 // StringContainsClixInitializeInOnCreate checks if Clix.initialize(this, ...) is called inside onCreate
 func StringContainsClixInitializeInOnCreate(content string) bool {
 	// Simple heuristic: check for 'void onCreate' or 'fun onCreate', then 'Clix.initialize(this'
@@ -89,8 +84,6 @@ func RunDoctor(projectRoot string) {
 	logx.Log().WithSpinner().Title().Println(logx.TitlePermissionCheck)
 	if !CheckAndroidMainActivityPermissions(projectRoot) {
 		logx.Log().Indent(3).Println(logx.FixPermissionRequest)
-		logx.NewLine()
-		logx.Log().Indent(3).Code().Println(logx.CodePermissionRequest)
 	}
 	logx.NewLine()
 

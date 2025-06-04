@@ -144,7 +144,6 @@ func CheckClixCoreImport(projectRoot string) (bool, string) {
 		return false, "unknown"
 	}
 
-	importFound := false
 	initializeFound := false
 
 	data, err := os.ReadFile(appPath)
@@ -153,30 +152,17 @@ func CheckClixCoreImport(projectRoot string) (bool, string) {
 		return false, "unknown"
 	}
 	content := string(data)
-	if stringContainsImportClix(content) {
-		importFound = true
-	}
 	if StringContainsClixInitializeInOnCreate(content) {
 		initializeFound = true
 	}
 
-	if importFound {
-		logx.Log().Success().Println(logx.MsgClixImportSuccess)
-	} else {
-		logx.Log().Failure().Println(logx.MsgClixImportMissing)
-	}
-
 	if initializeFound {
 		logx.Log().Success().Println(logx.MsgClixInitSuccess)
+		return true, ""
 	} else {
 		logx.Log().Failure().Println(logx.MsgClixInitMissing)
-	}
-
-	if !importFound || !initializeFound {
 		return false, "missing-content"
 	}
-
-	return true, ""
 }
 
 // CheckAndroidMainActivityPermissions checks MainActivity for permission request code, prints instructions if missing
