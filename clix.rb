@@ -5,20 +5,20 @@
 class Clix < Formula
   desc "A CLI tool for ..."
   homepage "https://github.com/clix-so/homebrew-clix-cli"
-  version "0.1.7"
+  version "0.1.8"
 
   on_macos do
     on_intel do
-      url "https://github.com/clix-so/homebrew-clix-cli/releases/download/v0.1.7/clix_0.1.7_darwin_amd64.tar.gz"
-      sha256 "21aa80230a1deca4ea07c451b7511877b4b02caaddadbf03a959a907c5d757eb"
+      url "https://github.com/clix-so/homebrew-clix-cli/releases/download/v0.1.8/clix_0.1.8_darwin_amd64.tar.gz"
+      sha256 "507cd252415185e9321c50bb34272122d105cb2e2b8d6d7a3d9c09644361261f"
 
       def install
         bin.install "clix"
       end
     end
     on_arm do
-      url "https://github.com/clix-so/homebrew-clix-cli/releases/download/v0.1.7/clix_0.1.7_darwin_arm64.tar.gz"
-      sha256 "90dc9cac6bbfcca3ba339b682cd37760064f7f26333f273adfde4f8f06b76f1d"
+      url "https://github.com/clix-so/homebrew-clix-cli/releases/download/v0.1.8/clix_0.1.8_darwin_arm64.tar.gz"
+      sha256 "fb8675f48cc644b989d92dae02cc4aa024f0742246831a25b044e94b5dacbfc6"
 
       def install
         bin.install "clix"
@@ -29,8 +29,8 @@ class Clix < Formula
   on_linux do
     on_intel do
       if Hardware::CPU.is_64_bit?
-        url "https://github.com/clix-so/homebrew-clix-cli/releases/download/v0.1.7/clix_0.1.7_linux_amd64.tar.gz"
-        sha256 "2b9de822d66d6202f8ca267e004feaedaf2071a178a75394675c7cb1997f28c3"
+        url "https://github.com/clix-so/homebrew-clix-cli/releases/download/v0.1.8/clix_0.1.8_linux_amd64.tar.gz"
+        sha256 "7c15b18a778181688b6fd9a0dfb8b45ab363b058e205b2f313780a9ce02717d1"
 
         def install
           bin.install "clix"
@@ -39,8 +39,8 @@ class Clix < Formula
     end
     on_arm do
       if Hardware::CPU.is_64_bit?
-        url "https://github.com/clix-so/homebrew-clix-cli/releases/download/v0.1.7/clix_0.1.7_linux_arm64.tar.gz"
-        sha256 "60a2d06f06beaa49c3b514e2a27b7a4e67336f4660eedfc0326f9cd440afec01"
+        url "https://github.com/clix-so/homebrew-clix-cli/releases/download/v0.1.8/clix_0.1.8_linux_arm64.tar.gz"
+        sha256 "81dad5d5288c5afa35cd463312cc3f23f5c3d4839155857543f50b6da2b323b4"
 
         def install
           bin.install "clix"
