@@ -33,11 +33,11 @@ func CheckGradleRepository(projectRoot string) bool {
 	}
 
 	if found {
-		logx.Log().Success().Println("Gradle repositories are properly configured.")
+		logx.Log().Success().Println(logx.MsgGradleRepoSuccess)
 		return true
 	}
 
-	logx.Log().Failure().Println("Gradle repository settings are missing.")
+	logx.Log().Failure().Println(logx.MsgGradleRepoFailure)
 	return false
 }
 
@@ -46,14 +46,14 @@ func CheckGradleDependency(projectRoot string) bool {
 	appBuildGradleFilePath := GetAppBuildGradlePath(projectRoot)
 
 	if appBuildGradleFilePath == "" {
-		logx.Log().Failure().Println("app/build.gradle(.kts) not found.")
+		logx.Log().Failure().Println(logx.MsgAppBuildGradleNotFound)
 		return false
 	}
 
 	found := false
 	data, err := ioutil.ReadFile(appBuildGradleFilePath)
 	if err != nil {
-		logx.Log().Failure().Println("Failed to read app/build.gradle(.kts)")
+		logx.Log().Failure().Println(logx.MsgAppBuildGradleReadFail)
 		return false
 	}
 
@@ -66,11 +66,11 @@ func CheckGradleDependency(projectRoot string) bool {
 	
 
 	if (found) {
-		logx.Log().Success().Println("Clix SDK dependency found.")
+		logx.Log().Success().Println(logx.MsgClixDependencySuccess)
 		return true
 	}
 
-	logx.Log().Failure().Println("Clix SDK dependency is missing.")
+	logx.Log().Failure().Println(logx.MsgClixDependencyFailure)
 	return false
 }
 
@@ -100,11 +100,11 @@ func CheckGradlePlugin(projectRoot string) bool {
 	}
 
 	if (found) {
-		logx.Log().Success().Println("Google services plugin found in app/build.gradle(.kts).")
+		logx.Log().Success().Println(logx.MsgGmsPluginFound)
 		return true
 	}
 
-	logx.Log().Failure().Println("Google services plugin not found in app/build.gradle(.kts).")
+	logx.Log().Failure().Println(logx.MsgGmsPluginNotFound)
 	return false
 }
 
@@ -114,12 +114,12 @@ func CheckClixCoreImport(projectRoot string) (bool, string) {
 	appName, err := extractApplicationClassName(manifestPath)
 
 	if err != nil {
-		logx.Log().Failure().Println("Failed to read AndroidManifest.xml")
+		logx.Log().Failure().Println(logx.MsgManifestReadFail)
 		return false, "unknown"
 	}
 
 	if appName == "" {
-		logx.Log().Failure().Println("No Application class found in AndroidManifest.xml")
+		logx.Log().Failure().Println(logx.MsgApplicationClassNotDefined)
 		return false, "missing-application"
 	}
 
@@ -128,7 +128,7 @@ func CheckClixCoreImport(projectRoot string) (bool, string) {
 
 	sourceDir := GetSourceDirPath(projectRoot)
 	if sourceDir == "" {
-		logx.Log().Failure().Println("Source directory not found.")
+		logx.Log().Failure().Println(logx.MsgSourceDirNotFound)
 		return false, "unknown"
 	}
 
@@ -140,7 +140,7 @@ func CheckClixCoreImport(projectRoot string) (bool, string) {
 	} else if _, err := os.Stat(ktPath); err == nil {
 		appPath = ktPath
 	} else {
-		logx.Log().Failure().Println("Application class not found in expected locations.")
+		logx.Log().Failure().Println(logx.MsgApplicationClassMissing)
 		return false, "unknown"
 	}
 
@@ -149,7 +149,7 @@ func CheckClixCoreImport(projectRoot string) (bool, string) {
 
 	data, err := os.ReadFile(appPath)
 	if err != nil {
-		logx.Log().Failure().Println("Failed to read Application class file")
+		logx.Log().Failure().Println(logx.MsgApplicationFileReadFail)
 		return false, "unknown"
 	}
 	content := string(data)
@@ -161,15 +161,15 @@ func CheckClixCoreImport(projectRoot string) (bool, string) {
 	}
 
 	if importFound {
-		logx.Log().Success().Println("so.clix.core.Clix is imported in Application class.")
+		logx.Log().Success().Println(logx.MsgClixImportSuccess)
 	} else {
-		logx.Log().Failure().Println("so.clix.core.Clix is NOT imported in Application class.")
+		logx.Log().Failure().Println(logx.MsgClixImportMissing)
 	}
 
 	if initializeFound {
-		logx.Log().Success().Println("Clix.initialize(this, ...) is called in onCreate() of Application class.")
+		logx.Log().Success().Println(logx.MsgClixInitSuccess)
 	} else {
-		logx.Log().Failure().Println("Clix.initialize(this, ...) is NOT called in onCreate() of Application class.")
+		logx.Log().Failure().Println(logx.MsgClixInitMissing)
 	}
 
 	if !importFound || !initializeFound {
@@ -201,7 +201,7 @@ func CheckAndroidMainActivityPermissions(projectRoot string) bool {
 	findMainActivity(kotlinDir)
 
 	if len(mainActivityFiles) == 0 {
-		logx.Log().Failure().Println("No MainActivity.java or MainActivity.kt found. Please ensure you have a MainActivity.")
+		logx.Log().Failure().Println(logx.MsgMainActivityNotFound)
 		return false
 	}
 
@@ -228,11 +228,11 @@ func CheckAndroidMainActivityPermissions(projectRoot string) bool {
 	}
 
 	if found {
-		logx.Log().Success().Println("MainActivity contains code requesting permissions.")
+		logx.Log().Success().Println(logx.MsgPermissionFound)
 		return true
 	}
 
-	logx.Log().Failure().Println("MainActivity does not contain code requesting permissions.")
+	logx.Log().Failure().Println(logx.MsgPermissionMissing)
 	return false
 }
 
@@ -240,11 +240,11 @@ func CheckAndroidMainActivityPermissions(projectRoot string) bool {
 func CheckGoogleServicesJSON(projectRoot string) bool {
 	gsPath := filepath.Join(projectRoot, "app", "google-services.json")
 	if _, err := os.Stat(gsPath); os.IsNotExist(err) {
-		logx.Log().Failure().Println("Missing google-services.json at app/google-services.json")
-		logx.Log().Indent(3).Println("See https://docs.clix.so/firebase-setting for setup instructions.")
+		logx.Log().Failure().Println(logx.MsgGoogleJsonMissing)
+		logx.Log().Indent(3).Println(logx.MsgGoogleJsonGuideLink)
 		return false
 	}
 
-	logx.Log().Success().Println("google-services.json found")
+	logx.Log().Success().Println(logx.MsgGoogleJsonFound)
 	return true
 }

@@ -58,49 +58,43 @@ func IndexOf(s, substr string) int {
 
 // RunDoctor runs all Android doctor checks.
 func RunDoctor(projectRoot string) {
-	logx.Log().WithSpinner().Title().Println("Checking Gradle repository settings...")
+	logx.Log().WithSpinner().Title().Println(logx.TitleGradleRepoCheck)
 	if !CheckGradleRepository(projectRoot) {
-		logx.Log().Indent(3).Println("To fix this, add the following to settings.gradle(.kts) or build.gradle(.kts):")
+		logx.Log().Indent(3).Println(logx.FixGradleRepo)
 		logx.NewLine()
-		logx.Log().Indent(3).Code().Println(`repositories {
-	mavenCentral()
-}`)
+		logx.Log().Indent(3).Code().Println(logx.CodeGradleRepo)
 	}
 	logx.NewLine()
 
-	logx.Log().WithSpinner().Title().Println("Checking for Clix SDK dependency...")
+	logx.Log().WithSpinner().Title().Println(logx.TitleClixDependencyCheck)
 	if !CheckGradleDependency(projectRoot) {
-		logx.Log().Indent(3).Println("To fix this, add the following to app/build.gradle(.kts):")
+		logx.Log().Indent(3).Println(logx.FixClixDependency)
 		logx.NewLine()
-		logx.Log().Indent(3).Code().Println(`dependencies {
-    implementation("so.clix:clix-android-sdk:0.0.2")
-}`)
+		logx.Log().Indent(3).Code().Println(logx.CodeClixDependency)
 	}
 	logx.NewLine()
 
-	logx.Log().WithSpinner().Title().Println("Checking for Google Services plugin...")
+	logx.Log().WithSpinner().Title().Println(logx.TitleGmsPluginCheck)
 	if !CheckGradlePlugin(projectRoot) {
-		logx.Log().Indent(3).Println("To fix this, add the following to build.gradle(.kts):")
+		logx.Log().Indent(3).Println(logx.FixGmsPlugin)
 		logx.NewLine()
-		logx.Log().Indent(3).Code().Println(`plugins {
-	id("com.google.gms.google-services") version "4.4.2"
-}`)
+		logx.Log().Indent(3).Code().Println(logx.CodeGmsPlugin)
 	}
 	logx.NewLine()
 
-	logx.Log().WithSpinner().Title().Println("Checking Clix SDK initialization...")
+	logx.Log().WithSpinner().Title().Println(logx.TitleClixInitializationCheck)
 	CheckClixCoreImport(projectRoot)
 	logx.NewLine()
 
-	logx.Log().WithSpinner().Title().Println("Checking permission request...")
+	logx.Log().WithSpinner().Title().Println(logx.TitlePermissionCheck)
 	if !CheckAndroidMainActivityPermissions(projectRoot) {
-		logx.Log().Indent(3).Println("To fix this, add the following to MainActivity.java or MainActivity.kt:")
+		logx.Log().Indent(3).Println(logx.FixPermissionRequest)
 		logx.NewLine()
-		logx.Log().Indent(3).Code().Println(`ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)`)
+		logx.Log().Indent(3).Code().Println(logx.CodePermissionRequest)
 	}
 	logx.NewLine()
 
-	logx.Log().WithSpinner().Title().Println("Checking google-services.json...")
+	logx.Log().WithSpinner().Title().Println(logx.TitleGoogleServicesJsonCheck)
 	CheckGoogleServicesJSON(projectRoot)
 	logx.NewLine()
 }

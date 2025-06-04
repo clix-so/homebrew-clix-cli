@@ -14,92 +14,86 @@ import (
 func HandleAndroidInstall(apiKey, projectID string) {
 	projectRoot, err := os.Getwd()
 	if err != nil {
-		logx.Log().Failure().Println("Could not determine working directory.")
+		logx.Log().Failure().Println(logx.MsgWorkingDirectoryNotFound)
 		return
 	}
 
-	logx.Log().WithSpinner().Title().Println("Checking google-services.json...")
+	logx.Log().WithSpinner().Title().Println(logx.TitleGoogleServicesJsonCheck)
 	if !CheckGoogleServicesJSON(projectRoot) {
 		return
 	}
 	logx.NewLine()
 
-	logx.Log().WithSpinner().Title().Println("Checking Gradle repository settings...")
+	logx.Log().WithSpinner().Title().Println(logx.TitleGradleRepoCheck)
 	repoOK := CheckGradleRepository(projectRoot)
 	if !repoOK {
 		if AddGradleRepository(projectRoot) {
-			logx.Log().Branch().Success().Println("Fixed: Automatically added")
+			logx.Log().Branch().Success().Println(logx.MsgAutoFixSuccess)
 		} else {
-			logx.Log().Branch().Failure().Println("Could not fix automatically. Please add the following manually to settings.gradle(.kts) or build.gradle(.kts):")
+			logx.Log().Branch().Failure().Println(logx.MsgGradleRepoFixFailure)
 		}
-		logx.Log().Indent(6).Code().Println(`repositories {
-	mavenCentral()
-}`)
+		logx.Log().Indent(6).Code().Println(logx.CodeGradleRepo)
 	}
 	logx.NewLine()
 
-	logx.Log().WithSpinner().Println("Checking for Clix SDK dependency...")
+	logx.Log().WithSpinner().Println(logx.TitleClixDependencyCheck)
 	depOK := CheckGradleDependency(projectRoot)
 	if !depOK {
 		if AddGradleDependency(projectRoot) {
-			logx.Log().Branch().Success().Println("Fixed: Automatically added")
+			logx.Log().Branch().Success().Println(logx.MsgAutoFixSuccess)
 			depOK = true
 		} else {
-			logx.Log().Branch().Failure().Println("Could not fix automatically. Please add the following manually to app/build.gradle(.kts):")
+			logx.Log().Branch().Failure().Println(logx.MsgClixDependencyFixFailure)
 		}
-		logx.Log().Indent(6).Code().Println(`dependencies {
-	implementation("so.clix:clix-android-sdk:1.0.0")
-}`)
+		logx.Log().Indent(6).Code().Println(logx.CodeClixDependency)
 	}
 	fmt.Println()
 
-	logx.Log().WithSpinner().Println("Checking for Google Services plugin...")
+	logx.Log().WithSpinner().Println(logx.TitleGmsPluginCheck)
 	pluginOK := CheckGradlePlugin(projectRoot)
 	if !pluginOK {
 		if AddGradlePlugin(projectRoot) {
-			logx.Log().Branch().Success().Println("Fixed: Automatically added")
+			logx.Log().Branch().Success().Println(logx.MsgAutoFixSuccess)
 			pluginOK = true
 		} else {
-			logx.Log().Branch().Failure().Println("Could not fix automatically. Please add the following manually to build.gradle(.kts):")
+			logx.Log().Branch().Failure().Println(logx.MsgGmsPluginFixFailure)
 		}
-		logx.Log().Indent(6).Code().Println(`plugins {
-	id("com.google.gms.google-services") version "4.4.2"
-}`)
+		logx.Log().Indent(6).Code().Println(logx.CodeGmsPlugin)
 	}
 	fmt.Println()
 
-	logx.Log().WithSpinner().Println("Checking Clix SDK initialization...")
+	logx.Log().WithSpinner().Println(logx.TitleClixInitializationCheck)
 	appOK, code := CheckClixCoreImport(projectRoot)
 	if !appOK {
 		if code == "missing-application" {
-			ok, message := AddApplication(projectRoot, apiKey, projectID)
+			ok, _ := AddApplication(projectRoot, apiKey, projectID)
 			if ok {
-				logx.Log().Branch().Success().Println("Fixed: Application class created successfully")
+				logx.Log().Branch().Success().Println(logx.MsgAppCreateSuccess)
 				appOK = true
 			} else {
-				logx.Log().Branch().Failure().Println("Could not fix automatically. " + message)
+				logx.Log().Branch().Failure().Println(logx.MsgAppCannotFix)
 			}
 		} else if code == "missing-content" {
 			ok := AddClixInitializationToApplication(projectRoot, apiKey, projectID)
 			if ok {
-				logx.Log().Branch().Success().Println("Fixed: Clix SDK initialization added to Application class")
+				logx.Log().Branch().Success().Println(logx.MsgAppInitFixSuccess)
 				appOK = true
 			} else {
-				logx.Log().Branch().Failure().Println("Could not fix automatically. Please ensure your Application class initializes Clix SDK.")
+				logx.Log().Branch().Failure().Println(logx.MsgAppInitFixFailure)
 			}
 		} else {
-			logx.Log().Branch().Failure().Println("Could not fix automatically. Please follow the guide below to set up your Application class:")
-		    logx.Log().Indent(6).Println("https://docs.clix.so/sdk-quickstart-android#setup-clix-manual-installation")
+			logx.Log().Branch().Failure().Println(logx.MsgAppCannotFix)
+		    logx.Log().Indent(6).Println(logx.MsgAppManualGuideLink)
 		}
 	}
 	fmt.Println()
 
-	logx.Log().WithSpinner().Println("Checking permission request...")
+	logx.Log().WithSpinner().Println(logx.TitlePermissionCheck)
 	mainActivityOK := CheckAndroidMainActivityPermissions(projectRoot)
 	if !mainActivityOK {
-		logx.Log().Branch().Failure().Println("Could not fix automatically. Please add the following to your MainActivity.kt or MainActivity.java:")
+		logx.Log().Branch().Failure().Println(logx.MsgPermissionMissing)
 		fmt.Println()
-		logx.Log().Indent(6).Code().Println(`ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)`)
+		logx.Log().Indent(6).Code().Println(logx.CodePermissionRequest)
 	}
 	fmt.Println()
 
