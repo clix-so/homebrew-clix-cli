@@ -7,107 +7,91 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/clix-so/clix-cli/pkg/utils"
+	"github.com/clix-so/clix-cli/pkg/logx"
 )
 
 // HandleAndroidInstall guides the user through the Android installation checklist.
 func HandleAndroidInstall(apiKey, projectID string) {
 	projectRoot, err := os.Getwd()
 	if err != nil {
-		utils.Failureln("Could not determine working directory.") // TODO: revisit this
+		logx.Log().Failure().Println(logx.MsgWorkingDirectoryNotFound)
 		return
 	}
 
-	utils.TitlelnWithSpinner("Checking google-services.json...")
+	logx.Log().WithSpinner().Title().Println(logx.TitleGoogleServicesJsonCheck)
 	if !CheckGoogleServicesJSON(projectRoot) {
+		logx.Log().Branch().Failure().Println(logx.MsgGoogleJsonFixFailure)
+		logx.Log().Indent(6).Code().Println(logx.GoogleServicesJsonLink)
 		return
 	}
-	fmt.Println()
+	logx.NewLine()
 
-	utils.TitlelnWithSpinner("Checking Gradle repository settings...")
+	logx.Log().WithSpinner().Title().Println(logx.TitleGradleRepoCheck)
 	repoOK := CheckGradleRepository(projectRoot)
 	if !repoOK {
 		if AddGradleRepository(projectRoot) {
-			utils.BranchSuccessln("Fixed: Automatically added")
+			logx.Log().Branch().Success().Println(logx.MsgAutoFixSuccess)
 		} else {
-			utils.BranchFailureln("Could not fix automatically. Please add the following manually to settings.gradle(.kts) or build.gradle(.kts):")
+			logx.Log().Branch().Failure().Println(logx.MsgGradleRepoFixFailure)
 		}
-		utils.Grayln(`      repositories {
-          mavenCentral()
-      }`)
+		logx.NewLine()
+		logx.Log().Indent(6).Code().Println(logx.CodeGradleRepo)
 	}
-	fmt.Println()
+	logx.NewLine()
 
-	utils.TitlelnWithSpinner("Checking for Clix SDK dependency...")
+	logx.Log().WithSpinner().Println(logx.TitleClixDependencyCheck)
 	depOK := CheckGradleDependency(projectRoot)
 	if !depOK {
 		if AddGradleDependency(projectRoot) {
-			utils.BranchSuccessln("Fixed: Automatically added")
+			logx.Log().Branch().Success().Println(logx.MsgAutoFixSuccess)
 			depOK = true
 		} else {
-			utils.BranchFailureln("Could not fix automatically. Please add the following manually to app/build.gradle(.kts):")
+			logx.Log().Branch().Failure().Println(logx.MsgClixDependencyFixFailure)
 		}
-		utils.Grayln(`      dependencies {
-          implementation("so.clix:clix-android-sdk:1.0.0")
-      }`)
+		logx.NewLine()
+		logx.Log().Indent(6).Code().Println(logx.CodeClixDependency)
 	}
-	fmt.Println()
+	logx.NewLine()
 
-	utils.TitlelnWithSpinner("Checking for Google Services plugin...")
+	logx.Log().WithSpinner().Println(logx.TitleGmsPluginCheck)
 	pluginOK := CheckGradlePlugin(projectRoot)
 	if !pluginOK {
 		if AddGradlePlugin(projectRoot) {
-			utils.BranchSuccessln("Fixed: Automatically added")
+			logx.Log().Branch().Success().Println(logx.MsgAutoFixSuccess)
 			pluginOK = true
 		} else {
-			utils.BranchFailureln("Could not fix automatically. Please add the following manually to build.gradle(.kts):")
+			logx.Log().Branch().Failure().Println(logx.MsgGmsPluginFixFailure)
 		}
-		utils.Grayln(`      plugins {
-          id("com.google.gms.google-services") version "4.4.2"
-      }`)
+		logx.NewLine()
+		logx.Log().Indent(6).Code().Println(logx.CodeGmsPlugin)
 	}
-	fmt.Println()
+	logx.NewLine()
 
-	utils.TitlelnWithSpinner("Checking Clix SDK initialization...")
+	logx.Log().WithSpinner().Println(logx.TitleClixInitializationCheck)
 	appOK, code := CheckClixCoreImport(projectRoot)
 	if !appOK {
 		if code == "missing-application" {
-			ok, message := AddApplication(projectRoot, apiKey, projectID)
+			ok, _ := AddApplication(projectRoot, apiKey, projectID)
 			if ok {
-				utils.BranchSuccessln("Fixed: Application class created successfully")
 				appOK = true
-			} else {
-				utils.BranchFailureln("Could not fix automatically. " + message)
 			}
-		} else if code == "missing-content" {
-			ok := AddClixInitializationToApplication(projectRoot, apiKey, projectID)
-			if ok {
-				utils.BranchSuccessln("Fixed: Clix SDK initialization added to Application class")
-				appOK = true
-			} else {
-				utils.BranchFailureln("Could not fix automatically. Please ensure your Application class initializes Clix SDK.")
-			}
-		} else {
-			utils.BranchFailureln("Could not fix automatically. Please follow the guide below to set up your Application class:")
-		    utils.Indentln("https://docs.clix.so/sdk-quickstart-android#setup-clix-manual-installation", 6)
 		}
 	}
-	fmt.Println()
+	if appOK {
+		logx.Log().Branch().Success().Println(logx.MsgAppCreateSuccess)
+	} else {
+		logx.Log().Branch().Failure().Println(logx.MsgAppFixFailure)
+		logx.Log().Indent(6).Code().Println(logx.ClixInitializationLink)
+	}
+	logx.NewLine()
 
-	utils.TitlelnWithSpinner("Checking permission request...")
+	logx.Log().WithSpinner().Println(logx.TitlePermissionCheck)
 	mainActivityOK := CheckAndroidMainActivityPermissions(projectRoot)
 	if !mainActivityOK {
-		utils.BranchFailureln("Could not fix automatically. Please add the following to your MainActivity.kt or MainActivity.java:")
-		fmt.Println()
-		utils.Grayln(`      ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)`)
+		logx.Log().Branch().Failure().Println(logx.MsgPermissionFixFailure)
+		logx.Log().Indent(6).Code().Println(logx.PermissionRequestLink)
 	}
-	fmt.Println()
-
-	if repoOK && depOK && appOK && mainActivityOK {
-		utils.Successln("Clix SDK installation checklist complete! Your Android project is ready.")
-	} else {
-		utils.Failureln("Please address the above issues and re-run 'clix install --android' or 'clix doctor --android'.")
-	}
+	logx.NewLine()
 }
 
 
@@ -265,85 +249,4 @@ func AddApplication(projectRoot, apiKey, projectID string) (bool, string) {
 	}
 
 	return true, "Application class setup complete"
-}
-
-// AddClixInitializationToApplication inserts Clix SDK initialization code into the Application.kt if missing
-// FIXME(@nyanxyz): Does not work properly yet
-func AddClixInitializationToApplication(projectRoot, apiKey, projectID string) bool {
-	kotlinDir := filepath.Join(projectRoot, "app", "src", "main", "kotlin")
-	found := false
-	err := filepath.Walk(kotlinDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() {
-			return nil
-		}
-		if strings.HasSuffix(info.Name(), "Application.kt") {
-			data, err := ioutil.ReadFile(path)
-			if err != nil {
-				return nil
-			}
-			content := string(data)
-			if strings.Contains(content, "Clix.initialize(") {
-				found = true
-				return nil
-			}
-			// Insert imports at the top if missing
-			importBlock := "import so.clix.Clix\nimport so.clix.ClixConfig\nimport so.clix.ClixLogLevel\n"
-			if !strings.Contains(content, "import so.clix.Clix") {
-				lines := strings.Split(content, "\n")
-				for i, line := range lines {
-					if strings.HasPrefix(line, "package ") {
-						// Insert after package
-						lines = append(lines[:i+1], append([]string{importBlock}, lines[i+1:]...)...)
-						break
-					}
-				}
-				content = strings.Join(lines, "\n")
-			}
-			// Insert initialization in onCreate
-			initBlock := `override fun onCreate() {
-        super.onCreate()
-        // Project ID: ` + projectID + `
-        lifecycleScope.launch {
-            try {
-                val config =
-            ClixConfig(
-                projectId = "` + projectID + `",
-                apiKey = "` + apiKey + `",
-            )
-        Clix.initialize(this, config)
-            } catch (e: Exception) {
-                // Handle initialization failure
-            }
-        }
-    }`
-			if strings.Contains(content, "override fun onCreate()") {
-				// Replace existing onCreate with template
-				lines := strings.Split(content, "\n")
-				for i, line := range lines {
-					if strings.Contains(line, "override fun onCreate()") {
-						// Replace block (simple heuristic: next 2~20 lines)
-						end := i + 1
-						for ; end < len(lines) && end-i < 20; end++ {
-							if strings.Contains(lines[end], "}") {
-								break
-							}
-						}
-						lines = append(lines[:i], append([]string{initBlock}, lines[end+1:]...)...)
-						break
-					}
-				}
-				content = strings.Join(lines, "\n")
-			} else {
-				// Insert initBlock before last '}'
-				idx := strings.LastIndex(content, "}")
-				if idx != -1 {
-					content = content[:idx] + initBlock + "\n}" + content[idx+1:]
-				}
-			}
-			ioutil.WriteFile(path, []byte(content), 0644)
-			found = true
-		}
-		return nil
-	})
-	return found && err == nil
 }
