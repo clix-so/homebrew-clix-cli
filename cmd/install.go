@@ -154,11 +154,12 @@ func handleIOSInstall() {
 	fmt.Println("\n==================================================")
 	fmt.Println("🚀 Clix SDK iOS setup instructions complete!")
 	fmt.Println("==================================================")
-	fmt.Println("Run 'clix-cli doctor --ios' to verify your setup.")
+	fmt.Println("Running installation command to install Clix SDK for iOS.")
 
 	err := ios.InstallClixIOS(projectID, apiKey)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "❌ Failed:", err)
+		fmt.Fprintln(os.Stderr, "\nPlease follow the manual installation guide: https://docs.clix.so/sdk-quickstart-ios")
 		return
 	}
 
@@ -238,7 +239,7 @@ func handleAndroidInstall() {
 
 	projectID := utils.Prompt("Enter your Project ID")
 	apiKey := utils.Prompt("Enter your Public API Key")
-	
+
 	logx.NewLine()
 	android.HandleAndroidInstall(apiKey, projectID)
 }
