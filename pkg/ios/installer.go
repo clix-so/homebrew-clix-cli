@@ -5,7 +5,190 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/clix-so/clix-cli/pkg/logx"
+	"github.com/clix-so/clix-cli/pkg/utils"
 )
+
+// HandleIOSInstall guides the user through the iOS installation process
+func HandleIOSInstall(projectID, apiKey string) {
+	// Automatically detect whether the project is using CocoaPods or SPM
+	logx.Log().Println("🔍 Detecting package manager...")
+	usingSPM, usingCocoaPods := detectPackageManager()
+
+	if usingSPM {
+		logx.Log().Println("📦 Swift Package Manager (SPM) detected!")
+		logx.Log().Println("📦 Please add the Clix SDK via SPM in Xcode:")
+		logx.Separatorln()
+		logx.Log().Println("1. Open your Xcode project.")
+		logx.Log().Println("2. Go to File > Add Package Dependencies")
+		logx.Log().Println("3. Enter the URL below to the input on the right side")
+		logx.Log().Println("   https://github.com/clix-so/clix-ios-sdk.git")
+		logx.Log().Println("4. Select 'Up to Next Major' for the version rule")
+		logx.Separatorln()
+		utils.Prompt("Press Enter to continue...")
+	} else if usingCocoaPods {
+		logx.Log().Println("📦 CocoaPods detected!")
+		logx.Log().Println("🤖 Installing Clix SDK for iOS via CocoaPods")
+		logx.Separatorln()
+		err := utils.RunShellCommand("pod", "Clix")
+		if err != nil {
+			logx.Log().Failure().Println(fmt.Sprintf("Failed to run 'pod Clix': %s", err))
+			return
+		}
+	} else {
+		// If neither is detected, ask the user
+		useSPM := utils.Prompt("Could not automatically detect package manager. Are you using Swift Package Manager (SPM)? (Y/n)")
+		if useSPM == "" || strings.ToLower(useSPM) == "y" {
+			logx.Log().Println("📦 Please add the Clix SDK via SPM in Xcode:")
+			logx.Separatorln()
+			logx.Log().Println("1. Open your Xcode project.")
+			logx.Log().Println("2. Go to File > Add Package Dependencies")
+			logx.Log().Println("3. Enter the URL below to the input on the right side")
+			logx.Log().Println("   https://github.com/clix-so/clix-ios-sdk.git")
+			logx.Log().Println("4. Select 'Up to Next Major' for the version rule")
+			logx.Log().Println("5. Click 'Add Package' to add the Clix SDK")
+			logx.Log().Println("6. Add your main app to the target list")
+			logx.Separatorln()
+			utils.Prompt("Press Enter to continue...")
+		} else {
+			logx.Log().Println("🤖 Installing Clix SDK for iOS via CocoaPods")
+			logx.Separatorln()
+			err := utils.RunShellCommand("pod", "Clix")
+			if err != nil {
+				logx.Log().Failure().Println(fmt.Sprintf("Failed to run 'pod Clix': %s", err))
+				return
+			}
+		}
+	}
+
+	logx.NewLine()
+	logx.Log().Println("📱 Integrating Clix SDK for iOS...")
+	logx.Separatorln()
+
+	logx.Log().Println("1️⃣  Notification Service Extension & App Group Setup")
+	logx.Separatorln()
+	logx.Log().Println("1. In Xcode, go to File > New > Target > Notification Service Extension.")
+	logx.Log().Println("📝 Updating NotificationServiceExtension...")
+	logx.Log().Println("2. Name it 'NotificationServiceExtension'.")
+	logx.Log().Println("3. After creation, you should see a 'NotificationService.swift' file added.")
+	logx.Separatorln()
+	utils.Prompt("Press Enter after you have added the extension...")
+
+	logx.NewLine()
+	logx.Log().Println("2️⃣  Main App Setup")
+	logx.Separatorln()
+	logx.Log().Println("1. Select your main app target in Xcode.")
+	logx.Log().Println("2. Go to the 'Signing & Capabilities' tab.")
+	logx.Log().Println("3. Click the '+ Capability' button to add a capability.")
+	logx.Log().Println("4. Search for and add 'Push Notifications'.")
+	logx.Log().Println("5. Search for and add 'App Groups'.")
+	logx.Log().Println(fmt.Sprintf("6. Add the App Group: 'group.clix.%s'.", projectID))
+	logx.Separatorln()
+	utils.Prompt("Press Enter after you have configured App Groups for the main app...")
+
+	logx.NewLine()
+	logx.Log().Println("3️⃣  NotificationServiceExtension Setup")
+	logx.Separatorln()
+	logx.Log().Println("1. Select the NotificationServiceExtension target.")
+	logx.Log().Println("2. Go to the 'Signing & Capabilities' tab.")
+	logx.Log().Println("3. Add the App Groups capability.")
+	logx.Log().Println(fmt.Sprintf("4. Select the same group: 'group.clix.%s'.", projectID))
+	logx.Separatorln()
+	utils.Prompt("Press Enter after you have configured App Groups for the extension target...")
+
+	logx.NewLine()
+	logx.Log().Println("4️⃣  Update NotificationServiceExtension Dependencies")
+	logx.Separatorln()
+	logx.Log().Println("1. Select the NotificationServiceExtension target.")
+	logx.Log().Println("2. Go to the 'General' tab.")
+	logx.Log().Println("3. Click '+' under 'Frameworks, Libraries, and Embedded Content'.")
+	logx.Log().Println("4. Search for and add 'Clix'.")
+	logx.Separatorln()
+	utils.Prompt("Press Enter after you have configured everything for the extension target...")
+
+	logx.NewLine()
+	logx.Log().Println("🚀 Clix SDK iOS setup instructions complete!")
+	logx.Separatorln()
+	logx.Log().Println("Running installation command to install Clix SDK for iOS.")
+
+	err := InstallClixIOS(projectID, apiKey)
+	if err != nil {
+		logx.Log().Failure().Println(fmt.Sprintf("Failed: %s", err))
+		logx.Log().Println("Please follow the manual installation guide: https://docs.clix.so/sdk-quickstart-ios")
+		return
+	}
+
+	extensionErrors := UpdateNotificationServiceExtension(projectID)
+	if len(extensionErrors) > 0 {
+		logx.Log().Failure().Println(fmt.Sprintf("Failed to update NotificationServiceExtension: %v", extensionErrors))
+		logx.Log().Println("Please follow the manual installation guide: https://docs.clix.so/sdk-quickstart-ios")
+	} else {
+		logx.Log().Success().Println("NotificationServiceExtension successfully configured")
+	}
+
+	logx.NewLine()
+	logx.Log().Println("🔍 Running doctor check to verify Clix SDK and push notification setup...")
+	doctorErr := RunDoctor()
+	if doctorErr != nil {
+		logx.Log().Failure().Println(fmt.Sprintf("Doctor check failed: %s", doctorErr))
+	}
+}
+
+// detectPackageManager detects whether the iOS project is using CocoaPods or Swift Package Manager (SPM)
+func detectPackageManager() (usingSPM bool, usingCocoaPods bool) {
+	// Check for Podfile which indicates CocoaPods
+	_, podfileErr := os.Stat("Podfile")
+	if podfileErr == nil {
+		usingCocoaPods = true
+	}
+
+	// Check for Package.swift which indicates SPM
+	_, packageSwiftErr := os.Stat("Package.swift")
+	if packageSwiftErr == nil {
+		usingSPM = true
+	}
+
+	// Check for .xcodeproj files with SPM dependencies
+	files, err := os.ReadDir(".")
+	if err == nil {
+		for _, f := range files {
+			if strings.HasSuffix(f.Name(), ".xcodeproj") {
+				// Check if project.pbxproj contains SPM references
+				pbxprojPath := filepath.Join(f.Name(), "project.pbxproj")
+				data, err := os.ReadFile(pbxprojPath)
+				if err == nil {
+					content := string(data)
+					if strings.Contains(content, "XCRemoteSwiftPackageReference") {
+						usingSPM = true
+					}
+				}
+			}
+
+			// Check for .xcworkspace which typically indicates CocoaPods
+			if strings.HasSuffix(f.Name(), ".xcworkspace") && !strings.HasSuffix(f.Name(), "xcodeproj.xcworkspace") {
+				usingCocoaPods = true
+			}
+		}
+	}
+
+	// If both are detected, prioritize the one that seems more actively used
+	if usingSPM && usingCocoaPods {
+		// Check if Podfile.lock exists, which indicates active use of CocoaPods
+		_, podfileLockErr := os.Stat("Podfile.lock")
+		if podfileLockErr == nil {
+			// Podfile.lock exists, prioritize CocoaPods
+			usingSPM = false
+			usingCocoaPods = true
+		} else {
+			// No Podfile.lock, prioritize SPM
+			usingSPM = true
+			usingCocoaPods = false
+		}
+	}
+
+	return
+}
 
 func InstallClixIOS(projectID, apiKey string) error {
 	// Store errors to display at the end
@@ -17,7 +200,7 @@ func InstallClixIOS(projectID, apiKey string) error {
 	appPath = filepath.Join(appPath, "AppDelegate.swift")
 	if _, err := os.Stat(appPath); err != nil {
 		// If AppDelegate.swift not found, create one and return its result
-		fmt.Println("AppDelegate.swift not found, creating one...")
+		logx.Log().Println("AppDelegate.swift not found, creating one...")
 		return createAppDelegate(projectID, apiKey)
 	}
 
@@ -160,16 +343,13 @@ func InstallClixIOS(projectID, apiKey string) error {
 		return fmt.Errorf("failed to write AppDelegate.swift: %w", err)
 	}
 
-	fmt.Println("✅ Clix SDK successfully integrated into AppDelegate.swift")
+	logx.Log().Success().Println("Clix SDK installed successfully!")
 
 	// Report any errors that occurred during installation
 	if len(installErrors) > 0 {
-		fmt.Println("\n⚠️ Some issues occurred during installation:")
-		// Ensure installErrors is not nil before ranging over it
-		if installErrors != nil {
-			for _, err := range installErrors {
-				fmt.Println(" -", err)
-			}
+		logx.Log().Println("\n⚠️ Some issues occurred during installation:")
+		for _, err := range installErrors {
+			fmt.Println(" -", err)
 		}
 		fmt.Println("\nPlease address these issues manually or contact support.")
 		return fmt.Errorf("installation completed with some issues")
