@@ -13,6 +13,8 @@ import (
 
 var iosFlag bool
 var androidFlag bool
+var verboseFlag bool
+var dryRunFlag bool
 
 var installCmd = &cobra.Command{
 	Use:   "install",
@@ -42,6 +44,8 @@ func init() {
 	rootCmd.AddCommand(installCmd)
 	installCmd.Flags().BoolVar(&iosFlag, "ios", false, "Install Clix for iOS")
 	installCmd.Flags().BoolVar(&androidFlag, "android", false, "Install Clix for Android")
+	installCmd.Flags().BoolVar(&verboseFlag, "verbose", false, "Show verbose output during installation")
+	installCmd.Flags().BoolVar(&dryRunFlag, "dry-run", false, "Show what would be changed without making changes")
 }
 
 // Function to handle iOS installation
@@ -50,7 +54,7 @@ func handleIOSInstall() {
 	apiKey := utils.Prompt("Enter your Public API Key")
 
 	// Display installation instructions from the ios package
-	ios.DisplayIOSInstructions(projectID, apiKey)
+	ios.DisplayIOSInstructions(projectID, apiKey, verboseFlag, dryRunFlag)
 
 	// Install Clix iOS SDK
 	err := ios.InstallClixIOS(projectID, apiKey)
@@ -62,7 +66,10 @@ func handleIOSInstall() {
 	// Update NotificationServiceExtension
 	extensionErrors := ios.UpdateNotificationServiceExtension(projectID)
 	if len(extensionErrors) > 0 {
-		fmt.Fprintln(os.Stderr, "❌ Failed to update NotificationServiceExtension:", extensionErrors)
+		fmt.Fprintln(os.Stderr, "❌ Failed to update NotificationServiceExtension:")
+		for _, err := range extensionErrors {
+			fmt.Fprintln(os.Stderr, "  -", err)
+		}
 	} else {
 		fmt.Println("✅ NotificationServiceExtension successfully configured")
 	}
