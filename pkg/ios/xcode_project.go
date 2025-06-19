@@ -1,7 +1,8 @@
 package ios
 
 import (
-	_ "embed"
+	"bytes"
+	_ "embed" // Required for go:embed
 	"encoding/json"
 	"fmt"
 	"os"
@@ -193,24 +194,44 @@ func ConfigureXcodeProject(projectID string, verbose bool, dryRun bool) error {
 
 	// Run the Ruby script
 	cmd := exec.Command("ruby", args...)
-	
-	// Capture stderr to terminal but stdout separately for JSON parsing
-	cmd.Stderr = os.Stderr
-	
-	// Only capture stdout which should contain just the JSON
-	output, err := cmd.Output()
+
+	var stdoutBuf, stderrBuf bytes.Buffer
+	cmd.Stdout = &stdoutBuf
+	cmd.Stderr = &stderrBuf
+
+	err = cmd.Run()
+
+	stdout := stdoutBuf.Bytes()
+	stderr := stderrBuf.String()
+
 	if err != nil {
+		// Even if the script fails, it might have printed a JSON error message to stdout.
+		var result AutomationResult
+		if jsonErr := json.Unmarshal(stdout, &result); jsonErr == nil && !result.Success {
+			// We got a structured error message from the script. Use it.
+			return fmt.Errorf("%s", result.Message)
+		} else if jsonErr != nil {
+			// Diagnostic print for JSON parsing failure
+			fmt.Fprintf(os.Stderr, "DEBUG: Failed to parse JSON from script stdout during error handling.\nJSON Error: %v\nStdout: %s\n", jsonErr, string(stdout))
+		}
+
+		// If we couldn't get a structured error, return a generic one with any stderr output.
+		if len(stderr) > 0 {
+			return fmt.Errorf("failed to run Ruby script: %v\n\n--- Script Error ---\n%s", err, stderr)
+		}
 		return fmt.Errorf("failed to run Ruby script: %v", err)
 	}
 
-	// Parse JSON result
+	// Parse JSON result from successful execution
 	var result AutomationResult
-	if err := json.Unmarshal(output, &result); err != nil {
-		return fmt.Errorf("failed to parse script output: %v\nOutput: %s", err, output)
+	if err := json.Unmarshal(stdout, &result); err != nil {
+		return fmt.Errorf("failed to parse script output: %v\nOutput: %s", err, string(stdout))
 	}
 
 	if !result.Success {
-		return fmt.Errorf("script execution failed: %s", result.Message)
+		// This case handles when the script exits 0 but reports failure in JSON.
+		fmt.Fprintf(os.Stderr, "Error from configuration script: %s\n", result.Message)
+		return fmt.Errorf("script reported failure: %s", result.Message)
 	}
 
 	fmt.Println("✅ Xcode project configured successfully!")

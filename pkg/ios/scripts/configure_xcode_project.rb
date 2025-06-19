@@ -87,12 +87,15 @@ begin
   
   extension_target = project.targets.find { |t| t.name == options[:extension_target] }
   if extension_target.nil?
-    result(false, "Extension target '#{options[:extension_target]}' not found")
+    log("Warning: Extension target '#{options[:extension_target]}' not found. Skipping extension-specific configuration.", options)
+    result(false, "Extension target '#{options[:extension_target]}' not found. Skipping extension-specific configuration.")
     exit 1
   end
   
   log("Found main target: #{main_target.name}", options)
-  log("Found extension target: #{extension_target.name}", options)
+  if extension_target
+    log("Found extension target: #{extension_target.name}", options)
+  end
   
   # Get project directory
   project_dir = File.dirname(options[:project_path])
@@ -209,94 +212,96 @@ begin
   #-----------------------------------------
   # 2. Configure extension target entitlements
   #-----------------------------------------
-  extension_target.build_configurations.each do |config|
-    # Try to find the extension target's directory
-    extension_target_dir = nil
-    
-    # Try standard convention: project_dir/TargetName
-    standard_dir = File.join(project_dir, extension_target.name)
-    if Dir.exist?(standard_dir)
-      extension_target_dir = standard_dir
-    else
-      # Try to create the directory if it doesn't exist
-      begin
-        FileUtils.mkdir_p(standard_dir)
+  if extension_target
+    extension_target.build_configurations.each do |config|
+      # Try to find the extension target's directory
+      extension_target_dir = nil
+      
+      # Try standard convention: project_dir/TargetName
+      standard_dir = File.join(project_dir, extension_target.name)
+      if Dir.exist?(standard_dir)
         extension_target_dir = standard_dir
-      rescue => e
-        log("Failed to create extension target directory: #{e.message}", options)
-        
-        # Try to determine from build files
-        build_file_dirs = {}
-        
-        # Check source and resource build phases
-        [extension_target.source_build_phase, extension_target.resources_build_phase].each do |phase|
-          phase.files_references.each do |file_ref|
-            if file_ref.real_path && File.exist?(file_ref.real_path)
-              dir = File.dirname(file_ref.real_path.to_s)
-              build_file_dirs[dir] ||= 0
-              build_file_dirs[dir] += 1
+      else
+        # Try to create the directory if it doesn't exist
+        begin
+          FileUtils.mkdir_p(standard_dir)
+          extension_target_dir = standard_dir
+        rescue => e
+          log("Failed to create extension target directory: #{e.message}", options)
+          
+          # Try to determine from build files
+          build_file_dirs = {}
+          
+          # Check source and resource build phases
+          [extension_target.source_build_phase, extension_target.resources_build_phase].each do |phase|
+            phase.files_references.each do |file_ref|
+              if file_ref.real_path && File.exist?(file_ref.real_path)
+                dir = File.dirname(file_ref.real_path.to_s)
+                build_file_dirs[dir] ||= 0
+                build_file_dirs[dir] += 1
+              end
             end
           end
+          
+          # Find most common directory or use project root
+          extension_target_dir = if !build_file_dirs.empty?
+                                  build_file_dirs.max_by { |dir, count| count }[0]
+                                else
+                                  project_dir
+                                end
+        end
+      end
+      
+      # Determine entitlements file path
+      entitlements_path = nil
+      if config.build_settings['CODE_SIGN_ENTITLEMENTS']
+        # Get path from existing setting
+        relative_path = config.build_settings['CODE_SIGN_ENTITLEMENTS']
+        full_path = File.join(project_dir, relative_path)
+        
+        if File.exist?(full_path)
+          entitlements_path = full_path
+          log("Using existing extension entitlements file at: #{entitlements_path}", options)
+        else
+          entitlements_path = File.join(extension_target_dir, File.basename(relative_path))
+        end
+      else
+        # Create new entitlements file
+        target_subdir = File.join(project_dir, extension_target.name)
+        
+        unless Dir.exist?(target_subdir)
+          FileUtils.mkdir_p(target_subdir)
         end
         
-        # Find most common directory or use project root
-        extension_target_dir = if !build_file_dirs.empty?
-                                build_file_dirs.max_by { |dir, count| count }[0]
-                              else
-                                project_dir
-                              end
-      end
-    end
-    
-    # Determine entitlements file path
-    entitlements_path = nil
-    if config.build_settings['CODE_SIGN_ENTITLEMENTS']
-      # Get path from existing setting
-      relative_path = config.build_settings['CODE_SIGN_ENTITLEMENTS']
-      full_path = File.join(project_dir, relative_path)
-      
-      if File.exist?(full_path)
-        entitlements_path = full_path
-        log("Using existing extension entitlements file at: #{entitlements_path}", options)
-      else
-        entitlements_path = File.join(extension_target_dir, File.basename(relative_path))
-      end
-    else
-      # Create new entitlements file
-      target_subdir = File.join(project_dir, extension_target.name)
-      
-      unless Dir.exist?(target_subdir)
-        FileUtils.mkdir_p(target_subdir)
+        entitlements_filename = "#{extension_target.name}.entitlements"
+        entitlements_path = File.join(target_subdir, entitlements_filename)
+        
+        rel_path = Pathname.new(entitlements_path).relative_path_from(Pathname.new(project_dir)).to_s
+        config.build_settings['CODE_SIGN_ENTITLEMENTS'] = rel_path
+        log("Created new extension entitlements file at: #{entitlements_path}", options)
+        extension_modified = true
       end
       
-      entitlements_filename = "#{extension_target.name}.entitlements"
-      entitlements_path = File.join(target_subdir, entitlements_filename)
+      # Create or update entitlements file
+      entitlements = File.exist?(entitlements_path) ? 
+        Xcodeproj::Plist.read_from_path(entitlements_path) : {}
       
-      rel_path = Pathname.new(entitlements_path).relative_path_from(Pathname.new(project_dir)).to_s
-      config.build_settings['CODE_SIGN_ENTITLEMENTS'] = rel_path
-      log("Created new extension entitlements file at: #{entitlements_path}", options)
-      extension_modified = true
-    end
-    
-    # Create or update entitlements file
-    entitlements = File.exist?(entitlements_path) ? 
-      Xcodeproj::Plist.read_from_path(entitlements_path) : {}
-    
-    # Add App Groups entitlement
-    if !entitlements['com.apple.security.application-groups']
-      entitlements['com.apple.security.application-groups'] = []
-      extension_modified = true
-    end
-    
-    # Add specific app group if not already present
-    if !entitlements['com.apple.security.application-groups'].include?(options[:app_group_id])
-      entitlements['com.apple.security.application-groups'] << options[:app_group_id]
-      extension_modified = true
-    end
-    
-    # Write entitlements back to file
-    Xcodeproj::Plist.write_to_path(entitlements, entitlements_path)
-  end
+      # Add App Groups entitlement
+      if !entitlements['com.apple.security.application-groups']
+        entitlements['com.apple.security.application-groups'] = []
+        extension_modified = true
+      end
+      
+      # Add specific app group if not already present
+      if !entitlements['com.apple.security.application-groups'].include?(options[:app_group_id])
+        entitlements['com.apple.security.application-groups'] << options[:app_group_id]
+        extension_modified = true
+      end
+      
+      # Write entitlements back to file
+      Xcodeproj::Plist.write_to_path(entitlements, entitlements_path)
+    end # each config
+  end # if extension_target
   
   # Save the project
   project.save
