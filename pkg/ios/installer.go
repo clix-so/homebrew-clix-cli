@@ -2,10 +2,11 @@ package ios
 
 import (
 	"fmt"
-	"github.com/clix-so/clix-cli/pkg/logx"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/clix-so/clix-cli/pkg/logx"
 )
 
 // DisplayIOSInstructions shows iOS installation instructions
@@ -62,7 +63,8 @@ func DisplayIOSInstructions(projectID string, apiKey string, verbose bool, dryRu
 	logx.Log().Indent(2).Println("2. Go to File > New > Target")
 	logx.Log().Indent(2).Println("3. Select 'Notification Service Extension' and click Next.")
 	logx.Log().Indent(2).Println("4. Name it 'NotificationServiceExtension' and click Finish.")
-	logx.Log().Indent(2).Println("5. When prompted to activate the scheme, click 'Activate'.")
+	logx.Log().Indent(2).Println("5. When prompted to activate the scheme, click 'Don't Activate'.")
+	logx.Log().Indent(2).Println("6. Add Clix to the NotificationServiceExtension target's frameworks and libraries.")
 	logx.NewLine()
 	logx.Log().Println("Press Enter after you have created the NotificationServiceExtension...")
 	_, _ = fmt.Scanln()
@@ -71,7 +73,7 @@ func DisplayIOSInstructions(projectID string, apiKey string, verbose bool, dryRu
 	logx.Log().WithSpinner().Title().Println("2️⃣  Configuring App Groups and NotificationServiceExtension")
 	logx.NewLine()
 	logx.Log().Branch().Println("🤖 Automating Xcode project configuration...")
-	
+
 	// Try to configure the Xcode project automatically
 	err := ConfigureXcodeProject(projectID, verbose, dryRun)
 	if err != nil {
