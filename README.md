@@ -25,6 +25,7 @@ make install
 
 - **Install Clix SDK**
     - iOS (via Swift Package Manager or CocoaPods)
+      - Auto-configures App Groups and NotificationServiceExtension
     - Android (via Gradle)
 - **Doctor (Integration Checker)**
     - iOS: Checks your Xcode project for all required Clix SDK and push notification settings, and provides step-by-step guidance for any issues found.
@@ -39,6 +40,18 @@ Install the Clix SDK into your project.
 ```
 clix install
 ```
+
+#### iOS Specific Options
+
+```
+clix install --verbose         # Show verbose output during installation
+clix install --dry-run         # Show what would be changed without making changes
+```
+
+During iOS installation, the CLI will automatically:
+1. Install the Clix SDK using SPM or CocoaPods
+2. Configure App Groups for your main app and NotificationServiceExtension
+3. Add the Clix framework to your NotificationServiceExtension target
 
 ### `doctor`
 Check that your project is correctly set up for push notifications and Clix SDK integration. Provides detailed diagnostics and suggestions for fixing any issues.
