@@ -189,16 +189,57 @@ func CheckAppConfig(projectRoot string) []string {
 		issues = append(issues, "@react-native-firebase/messaging plugin not configured in app.json")
 	}
 
-	// Check for expo-build-properties plugin
+	// Check for expo-build-properties plugin and its configuration
 	hasBuildPropertiesPlugin := false
+	hasIOSUseFrameworks := false
+	hasAndroidExtraMavenRepos := false
+
 	for _, plugin := range config.Expo.Plugins {
 		if pluginStr, ok := plugin.(string); ok && pluginStr == "expo-build-properties" {
 			hasBuildPropertiesPlugin = true
-			break
+			// String plugin format doesn't have configuration, so these are missing
 		}
-		if pluginArray, ok := plugin.([]any); ok && len(pluginArray) > 0 {
+		if pluginArray, ok := plugin.([]any); ok && len(pluginArray) >= 2 {
 			if pluginStr, ok := pluginArray[0].(string); ok && pluginStr == "expo-build-properties" {
 				hasBuildPropertiesPlugin = true
+				
+				// Check the plugin configuration
+				if pluginConfig, ok := pluginArray[1].(map[string]any); ok {
+					// Check iOS useFrameworks
+					if iosConfig, exists := pluginConfig["ios"]; exists {
+						if iosMap, ok := iosConfig.(map[string]any); ok {
+							if useFrameworks, exists := iosMap["useFrameworks"]; exists {
+								if frameworks, ok := useFrameworks.(string); ok && frameworks == "static" {
+									hasIOSUseFrameworks = true
+								}
+							}
+						}
+					}
+					
+					// Check Android extraMavenRepos
+					if androidConfig, exists := pluginConfig["android"]; exists {
+						if androidMap, ok := androidConfig.(map[string]any); ok {
+							if repos, exists := androidMap["extraMavenRepos"]; exists {
+								notifeeRepo := "../../node_modules/@notifee/react-native/android/libs"
+								if repoArray, ok := repos.([]any); ok {
+									for _, repo := range repoArray {
+										if repoStr, ok := repo.(string); ok && repoStr == notifeeRepo {
+											hasAndroidExtraMavenRepos = true
+											break
+										}
+									}
+								} else if repoSlice, ok := repos.([]string); ok {
+									for _, repo := range repoSlice {
+										if repo == notifeeRepo {
+											hasAndroidExtraMavenRepos = true
+											break
+										}
+									}
+								}
+							}
+						}
+					}
+				}
 				break
 			}
 		}
@@ -206,6 +247,13 @@ func CheckAppConfig(projectRoot string) []string {
 
 	if !hasBuildPropertiesPlugin {
 		issues = append(issues, "expo-build-properties plugin not configured in app.json")
+	} else {
+		if !hasIOSUseFrameworks {
+			issues = append(issues, "iOS useFrameworks not set to 'static' in expo-build-properties")
+		}
+		if !hasAndroidExtraMavenRepos {
+			issues = append(issues, "Android extraMavenRepos missing Notifee path in expo-build-properties")
+		}
 	}
 
 	// Check for Firebase configuration in android and ios sections

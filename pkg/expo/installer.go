@@ -179,9 +179,9 @@ func UpdateAppConfig(projectRoot string) error {
 	// Check if required plugins are already present
 	hasFirebaseAppPlugin := false
 	hasFirebaseMessagingPlugin := false
-	hasBuildPropertiesPlugin := false
+	buildPropertiesPluginIndex := -1
 
-	for _, plugin := range config.Expo.Plugins {
+	for i, plugin := range config.Expo.Plugins {
 		if pluginStr, ok := plugin.(string); ok {
 			if pluginStr == "@react-native-firebase/app" {
 				hasFirebaseAppPlugin = true
@@ -190,7 +190,7 @@ func UpdateAppConfig(projectRoot string) error {
 				hasFirebaseMessagingPlugin = true
 			}
 			if pluginStr == "expo-build-properties" {
-				hasBuildPropertiesPlugin = true
+				buildPropertiesPluginIndex = i
 			}
 		}
 		if pluginArray, ok := plugin.([]any); ok && len(pluginArray) > 0 {
@@ -202,7 +202,7 @@ func UpdateAppConfig(projectRoot string) error {
 					hasFirebaseMessagingPlugin = true
 				}
 				if pluginStr == "expo-build-properties" {
-					hasBuildPropertiesPlugin = true
+					buildPropertiesPluginIndex = i
 				}
 			}
 		}
@@ -217,7 +217,11 @@ func UpdateAppConfig(projectRoot string) error {
 		config.Expo.Plugins = append(config.Expo.Plugins, "@react-native-firebase/messaging")
 	}
 
-	if !hasBuildPropertiesPlugin {
+	// Handle expo-build-properties plugin
+	notifeeRepo := "../../node_modules/@notifee/react-native/android/libs"
+	
+	if buildPropertiesPluginIndex == -1 {
+		// Plugin doesn't exist, add complete configuration
 		buildPropertiesPlugin := []any{
 			"expo-build-properties",
 			map[string]any{
@@ -225,13 +229,99 @@ func UpdateAppConfig(projectRoot string) error {
 					"useFrameworks": "static",
 				},
 				"android": map[string]any{
-					"extraMavenRepos": []string{
-						"../../node_modules/@notifee/react-native/android/libs",
-					},
+					"extraMavenRepos": []string{notifeeRepo},
 				},
 			},
 		}
 		config.Expo.Plugins = append(config.Expo.Plugins, buildPropertiesPlugin)
+	} else {
+		// Plugin exists, ensure it has the correct configuration
+		plugin := config.Expo.Plugins[buildPropertiesPluginIndex]
+		
+		// Handle string plugin format - convert to array format
+		if pluginStr, ok := plugin.(string); ok && pluginStr == "expo-build-properties" {
+			config.Expo.Plugins[buildPropertiesPluginIndex] = []any{
+				"expo-build-properties",
+				map[string]any{
+					"ios": map[string]any{
+						"useFrameworks": "static",
+					},
+					"android": map[string]any{
+						"extraMavenRepos": []string{notifeeRepo},
+					},
+				},
+			}
+		} else if pluginArray, ok := plugin.([]any); ok && len(pluginArray) >= 1 {
+			// Handle array plugin format
+			var pluginConfig map[string]any
+			if len(pluginArray) >= 2 {
+				if existingConfig, ok := pluginArray[1].(map[string]any); ok {
+					pluginConfig = existingConfig
+				} else {
+					pluginConfig = make(map[string]any)
+					pluginArray = append(pluginArray, pluginConfig)
+				}
+			} else {
+				pluginConfig = make(map[string]any)
+				pluginArray = append(pluginArray, pluginConfig)
+			}
+				// Ensure iOS configuration
+				if iosConfig, exists := pluginConfig["ios"]; exists {
+					if iosMap, ok := iosConfig.(map[string]any); ok {
+						iosMap["useFrameworks"] = "static"
+					}
+				} else {
+					pluginConfig["ios"] = map[string]any{
+						"useFrameworks": "static",
+					}
+				}
+
+				// Ensure Android configuration
+				if androidConfig, exists := pluginConfig["android"]; exists {
+					if androidMap, ok := androidConfig.(map[string]any); ok {
+						// Handle extraMavenRepos
+						if existingRepos, exists := androidMap["extraMavenRepos"]; exists {
+							// Check if notifee repo already exists
+							hasNotifeeRepo := false
+							if repoArray, ok := existingRepos.([]any); ok {
+								for _, repo := range repoArray {
+									if repoStr, ok := repo.(string); ok && repoStr == notifeeRepo {
+										hasNotifeeRepo = true
+										break
+									}
+								}
+								if !hasNotifeeRepo {
+									androidMap["extraMavenRepos"] = append(repoArray, notifeeRepo)
+								}
+							} else if repoSlice, ok := existingRepos.([]string); ok {
+								for _, repo := range repoSlice {
+									if repo == notifeeRepo {
+										hasNotifeeRepo = true
+										break
+									}
+								}
+								if !hasNotifeeRepo {
+									newRepos := make([]any, len(repoSlice)+1)
+									for j, repo := range repoSlice {
+										newRepos[j] = repo
+									}
+									newRepos[len(repoSlice)] = notifeeRepo
+									androidMap["extraMavenRepos"] = newRepos
+								}
+							}
+						} else {
+							androidMap["extraMavenRepos"] = []string{notifeeRepo}
+						}
+					}
+				} else {
+					pluginConfig["android"] = map[string]any{
+						"extraMavenRepos": []string{notifeeRepo},
+					}
+				}
+			
+			// Update the plugin array in the config
+			config.Expo.Plugins[buildPropertiesPluginIndex] = pluginArray
+		}
 	}
 
 	// Update Android configuration
