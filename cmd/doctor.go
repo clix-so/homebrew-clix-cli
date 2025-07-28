@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/clix-so/clix-cli/pkg/android"
+	"github.com/clix-so/clix-cli/pkg/expo"
 	"github.com/clix-so/clix-cli/pkg/ios"
 	"github.com/clix-so/clix-cli/pkg/logx"
 	"github.com/clix-so/clix-cli/pkg/utils"
@@ -13,6 +14,7 @@ import (
 
 var doctorIosFlag bool
 var doctorAndroidFlag bool
+var doctorExpoFlag bool
 
 // doctorCmd represents the doctor command
 var doctorCmd = &cobra.Command{
@@ -24,11 +26,11 @@ It verifies each step of the setup process and provides guidance
 for any issues found.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Automatically Detect the platform
-		if !doctorIosFlag && !doctorAndroidFlag {
-			doctorIosFlag, doctorAndroidFlag = utils.DetectPlatform()
+		if !doctorIosFlag && !doctorAndroidFlag && !doctorExpoFlag {
+			doctorIosFlag, doctorAndroidFlag, doctorExpoFlag = utils.DetectPlatform()
 
-			if !doctorIosFlag && !doctorAndroidFlag {
-				fmt.Fprintln(os.Stderr, "❗ Could not detect platform. Please specify --ios or --android")
+			if !doctorIosFlag && !doctorAndroidFlag && !doctorExpoFlag {
+				fmt.Fprintln(os.Stderr, "❗ Could not detect platform. Please specify --ios, --android, or --expo")
 				os.Exit(1)
 			}
 		}
@@ -48,8 +50,16 @@ for any issues found.`,
 			android.RunDoctor("") // pass project root if needed, or ""
 		}
 
-		if !doctorIosFlag && !doctorAndroidFlag {
-			fmt.Fprintln(os.Stderr, "❗ Please specify --ios or --android")
+		if doctorExpoFlag {
+			err := expo.RunDoctor()
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "❌ Doctor check failed:", err)
+				os.Exit(1)
+			}
+		}
+
+		if !doctorIosFlag && !doctorAndroidFlag && !doctorExpoFlag {
+			fmt.Fprintln(os.Stderr, "❗ Please specify --ios, --android, or --expo")
 			os.Exit(1)
 		}
 	},
@@ -59,4 +69,5 @@ func init() {
 	rootCmd.AddCommand(doctorCmd)
 	doctorCmd.Flags().BoolVar(&doctorIosFlag, "ios", false, "Check Clix for iOS")
 	doctorCmd.Flags().BoolVar(&doctorAndroidFlag, "android", false, "Check Clix for Android")
+	doctorCmd.Flags().BoolVar(&doctorExpoFlag, "expo", false, "Check Clix for React Native Expo")
 }

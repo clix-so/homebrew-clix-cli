@@ -21,7 +21,7 @@ var uninstallCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// Automatically Detect the platform
 		if !uninstallIOS && !uninstallAndroid {
-			uninstallIOS, uninstallAndroid = utils.DetectPlatform()
+			uninstallIOS, uninstallAndroid, _ = utils.DetectPlatform()
 
 			if !uninstallIOS && !uninstallAndroid {
 				fmt.Fprintln(os.Stderr, "❗ Could not detect platform. Please specify --ios or --android")
