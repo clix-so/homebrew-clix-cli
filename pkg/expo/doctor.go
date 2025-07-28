@@ -68,6 +68,13 @@ func RunDoctor() error {
 		logx.Log().Success().Println("✅ Clix initialization file found")
 	}
 
+	// Check 6: Clix integration in App component
+	if !CheckClixAppIntegration(projectRoot) {
+		issues = append(issues, "Clix not integrated in App component")
+	} else {
+		logx.Log().Success().Println("✅ Clix integrated in App component")
+	}
+
 	// Check 6: Generated native code
 	if !CheckNativeCode(projectRoot) {
 		issues = append(issues, "Native code not generated - run 'npx expo prebuild --clean'")
@@ -331,4 +338,32 @@ func CheckNativeCode(projectRoot string) bool {
 	}
 	
 	return androidExists && iosExists
+}
+
+// CheckClixAppIntegration checks if Clix is integrated into the App component
+func CheckClixAppIntegration(projectRoot string) bool {
+	// Common App component file paths in Expo projects
+	appFiles := []string{
+		"App.tsx",
+		"App.js", 
+		"src/App.tsx",
+		"src/App.js",
+		"app/_layout.tsx",  // Expo Router
+		"app/_layout.js",   // Expo Router
+		"src/app/_layout.tsx",
+		"src/app/_layout.js",
+	}
+
+	for _, file := range appFiles {
+		fullPath := filepath.Join(projectRoot, file)
+		if content, err := os.ReadFile(fullPath); err == nil {
+			appContent := string(content)
+			// Check if Clix is imported and initialized
+			hasImport := strings.Contains(appContent, "initializeClix")
+			hasCall := strings.Contains(appContent, "initializeClix()")
+			return hasImport && hasCall
+		}
+	}
+
+	return false
 }

@@ -118,14 +118,27 @@ func HandleExpoInstall(apiKey, projectID string) {
 	logx.Log().Branch().Success().Println("Clix initialization created successfully")
 	logx.NewLine()
 
-	// Step 7: Final instructions
+	// Step 7: Integrate Clix initialization into App component
+	logx.Log().WithSpinner().Title().Println("🔗 Integrating Clix into App component...")
+	if err := IntegrateClixIntoApp(projectRoot); err != nil {
+		logx.Log().Branch().Failure().Println("Failed to integrate Clix into App component")
+		logx.Log().Indent(6).Code().Println(err.Error())
+		fmt.Println("⚠️  Please manually add the following to your main component:")
+		fmt.Println("   import { initializeClix } from './clix-config';")
+		fmt.Println("   // Call initializeClix() in your component's useEffect")
+		fmt.Println("   // This should be added to App.tsx, App.js, or app/_layout.tsx")
+	} else {
+		logx.Log().Branch().Success().Println("Clix integration added to App component")
+	}
+	logx.NewLine()
+
+	// Step 8: Final instructions
 	fmt.Println("🎉 Clix SDK installation completed!")
 	fmt.Println("==================================================")
 	fmt.Println("Next steps:")
-	fmt.Println("1. Import and call Clix.initialize() in your App.js/App.tsx")
-	fmt.Println("2. Run 'npx expo prebuild --clean' to generate native code")
-	fmt.Println("3. Run 'npx expo run:android' or 'npx expo run:ios' to test")
-	fmt.Println("4. Run 'clix doctor --expo' to verify your setup")
+	fmt.Println("1. Run 'npx expo prebuild --clean' to generate native code")
+	fmt.Println("2. Run 'npx expo run:android' or 'npx expo run:ios' to test")
+	fmt.Println("3. Run 'clix doctor --expo' to verify your setup")
 	fmt.Println("==================================================")
 }
 
@@ -444,4 +457,191 @@ export const initializeClix = async () => {
 	}
 
 	return nil
+}
+
+// IntegrateClixIntoApp finds and modifies the main App component to include Clix initialization
+func IntegrateClixIntoApp(projectRoot string) error {
+	// Common App component file paths in Expo projects
+	appFiles := []string{
+		"App.tsx",
+		"App.js",
+		"src/App.tsx",
+		"src/App.js",
+		"app/_layout.tsx",  // Expo Router
+		"app/_layout.js",   // Expo Router
+		"src/app/_layout.tsx",
+		"src/app/_layout.js",
+	}
+
+	var appFilePath string
+	for _, file := range appFiles {
+		fullPath := filepath.Join(projectRoot, file)
+		if _, err := os.Stat(fullPath); err == nil {
+			appFilePath = fullPath
+			break
+		}
+	}
+
+	if appFilePath == "" {
+		return fmt.Errorf("could not find App.tsx, App.js, or _layout.tsx file in project")
+	}
+
+	// Read the existing App component
+	content, err := os.ReadFile(appFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to read %s: %v", appFilePath, err)
+	}
+
+	appContent := string(content)
+	
+	// Check if Clix is already imported
+	if strings.Contains(appContent, "initializeClix") {
+		return nil // Already integrated
+	}
+
+	// Add Clix import and useEffect
+	modifiedContent, err := addClixToAppComponent(appContent)
+	if err != nil {
+		return fmt.Errorf("failed to modify App component: %v", err)
+	}
+
+	// Write the modified content back
+	if err := os.WriteFile(appFilePath, []byte(modifiedContent), 0644); err != nil {
+		return fmt.Errorf("failed to write modified App component: %v", err)
+	}
+
+	return nil
+}
+
+// addClixToAppComponent adds Clix import and initialization to the App component
+func addClixToAppComponent(content string) (string, error) {
+	lines := strings.Split(content, "\n")
+	var result []string
+	
+	clixImport := "import { initializeClix } from './clix-config';"
+	importAdded := false
+	initAdded := false
+
+	for i, line := range lines {
+		result = append(result, line)
+		
+		// Add Clix import after the last import
+		if !importAdded && strings.HasPrefix(strings.TrimSpace(line), "import ") {
+			// Check if this is the last import line
+			isLastImport := true
+			for j := i + 1; j < len(lines); j++ {
+				nextLine := strings.TrimSpace(lines[j])
+				if nextLine == "" || strings.HasPrefix(nextLine, "//") {
+					continue
+				}
+				if strings.HasPrefix(nextLine, "import ") {
+					isLastImport = false
+					break
+				}
+				break
+			}
+			
+			if isLastImport {
+				result = append(result, clixImport)
+				importAdded = true
+			}
+		}
+		
+		// Add useEffect import to React import if needed
+		if strings.Contains(line, "import") && strings.Contains(line, "react") && !strings.Contains(line, "useEffect") {
+			if strings.Contains(line, "{") && strings.Contains(line, "}") {
+				// Modify existing React import to include useEffect
+				result[len(result)-1] = strings.Replace(line, "}", ", useEffect }", 1)
+			} else if !strings.Contains(content, "useEffect") {
+				// Add separate useEffect import
+				result = append(result, "import { useEffect } from 'react';")
+			}
+		}
+		
+		// Add Clix initialization after component opening brace
+		if !initAdded && isComponentDeclaration(line) {
+			
+			// Find the opening brace
+			braceIndex := i
+			if !strings.Contains(line, "{") {
+				for j := i + 1; j < len(lines); j++ {
+					if strings.Contains(lines[j], "{") {
+						braceIndex = j
+						break
+					}
+				}
+			}
+			
+			if braceIndex > i {
+				// We need to add to the next line after brace
+				continue
+			} else {
+				// Brace is on the same line, add initialization
+				initCode := []string{
+					"",
+					"  // Initialize Clix SDK", 
+					"  useEffect(() => {",
+					"    initializeClix();",
+					"  }, []);",
+					"",
+				}
+				result = append(result, initCode...)
+				initAdded = true
+			}
+		}
+		
+		// Handle case where opening brace is on next line
+		if !initAdded && strings.TrimSpace(line) == "{" && i > 0 {
+			prevLine := lines[i-1]
+			if isComponentDeclaration(prevLine) {
+				
+				initCode := []string{
+					"",
+					"  // Initialize Clix SDK",
+					"  useEffect(() => {",
+					"    initializeClix();", 
+					"  }, []);",
+					"",
+				}
+				result = append(result, initCode...)
+				initAdded = true
+			}
+		}
+	}
+	
+	// If import wasn't added, add at the beginning
+	if !importAdded {
+		result = append([]string{clixImport, ""}, result...)
+	}
+	
+	return strings.Join(result, "\n"), nil
+}
+
+// isComponentDeclaration checks if a line contains a React component declaration
+func isComponentDeclaration(line string) bool {
+	trimmed := strings.TrimSpace(line)
+	
+	// Check for various component patterns
+	patterns := []string{
+		"export default function",
+		"const App",
+		"function App",
+		"const RootLayout", 
+		"function RootLayout",
+		"const Layout",
+		"function Layout",
+	}
+	
+	for _, pattern := range patterns {
+		if strings.Contains(trimmed, pattern) {
+			return true
+		}
+	}
+	
+	// Check for export default function with any name
+	if strings.HasPrefix(trimmed, "export default function ") {
+		return true
+	}
+	
+	return false
 }
