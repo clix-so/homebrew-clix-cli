@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/clix-so/clix-cli/pkg/logx"
@@ -71,9 +72,28 @@ func HandleExpoInstall(apiKey, projectID string) {
 
 	// Step 3: Install Clix dependencies
 	logx.Log().WithSpinner().Title().Println("📱 Installing Clix dependencies...")
-	if err := utils.RunShellCommand("npx", "expo", "install", "@clix-so/react-native-sdk", "@notifee/react-native", "react-native-device-info", "react-native-get-random-values", "react-native-mmkv", "uuid"); err != nil {
+	
+	// Get appropriate MMKV version based on React Native version
+	mmkvVersion, err := getMMKVVersion(projectRoot)
+	if err != nil {
+		logx.Log().Branch().Failure().Println("Failed to determine MMKV version")
+		logx.Log().Indent(6).Code().Println(err.Error())
+		return
+	}
+	
+	dependencies := []string{
+		"@clix-so/react-native-sdk",
+		"@notifee/react-native", 
+		"react-native-device-info",
+		"react-native-get-random-values",
+		mmkvVersion,
+		"uuid",
+	}
+	
+	args := append([]string{"expo", "install"}, dependencies...)
+	if err := utils.RunShellCommand("npx", args...); err != nil {
 		logx.Log().Branch().Failure().Println("Failed to install Clix dependencies")
-		logx.Log().Indent(6).Code().Println("npx expo install @clix-so/react-native-sdk @notifee/react-native react-native-device-info react-native-get-random-values react-native-mmkv uuid")
+		logx.Log().Indent(6).Code().Println(fmt.Sprintf("npx expo install %s", strings.Join(dependencies, " ")))
 		return
 	}
 	logx.Log().Branch().Success().Println("Clix dependencies installed successfully")
@@ -644,4 +664,88 @@ func isComponentDeclaration(line string) bool {
 	}
 	
 	return false
+}
+
+// getMMKVVersion determines the appropriate MMKV version based on React Native version
+func getMMKVVersion(projectRoot string) (string, error) {
+	packageJSONPath := filepath.Join(projectRoot, "package.json")
+	data, err := os.ReadFile(packageJSONPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read package.json: %v", err)
+	}
+
+	var packageJSON map[string]any
+	if err := json.Unmarshal(data, &packageJSON); err != nil {
+		return "", fmt.Errorf("failed to parse package.json: %v", err)
+	}
+
+	// Get React Native version from dependencies
+	var reactNativeVersion string
+	if dependencies, ok := packageJSON["dependencies"].(map[string]any); ok {
+		if rnVersion, exists := dependencies["react-native"]; exists {
+			if versionStr, ok := rnVersion.(string); ok {
+				reactNativeVersion = versionStr
+			}
+		}
+	}
+
+	if reactNativeVersion == "" {
+		// Default to MMKV 2.x for safety if version cannot be determined
+		return "react-native-mmkv@^2.12.2", nil
+	}
+
+	// Parse React Native version
+	version, err := parseReactNativeVersion(reactNativeVersion)
+	if err != nil {
+		// Default to MMKV 2.x for safety if version cannot be parsed
+		return "react-native-mmkv@^2.12.2", nil
+	}
+
+	// Determine MMKV version based on React Native version
+	switch {
+	case version >= 75:
+		// React Native 0.75+ - use MMKV 3.0.2+
+		return "react-native-mmkv@^3.0.2", nil
+	case version >= 74:
+		// React Native 0.74 - use MMKV 3.0.1
+		return "react-native-mmkv@^3.0.1", nil
+	default:
+		// React Native < 0.74 - use MMKV 2.x
+		return "react-native-mmkv@^2.12.2", nil
+	}
+}
+
+// parseReactNativeVersion parses React Native version string and returns major.minor as integer
+func parseReactNativeVersion(versionStr string) (int, error) {
+	// Remove common prefixes and suffixes
+	version := strings.TrimPrefix(versionStr, "^")
+	version = strings.TrimPrefix(version, "~")
+	version = strings.TrimPrefix(version, ">=")
+	version = strings.TrimPrefix(version, "<=")
+	version = strings.TrimPrefix(version, ">")
+	version = strings.TrimPrefix(version, "<")
+	
+	// Split by dots to get major.minor
+	parts := strings.Split(version, ".")
+	if len(parts) < 2 {
+		return 0, fmt.Errorf("invalid version format: %s", versionStr)
+	}
+
+	major := strings.TrimSpace(parts[0])
+	minor := strings.TrimSpace(parts[1])
+
+	// Parse major version
+	majorInt, err := strconv.Atoi(major)
+	if err != nil {
+		return 0, fmt.Errorf("invalid major version: %s", major)
+	}
+
+	// Parse minor version
+	minorInt, err := strconv.Atoi(minor)
+	if err != nil {
+		return 0, fmt.Errorf("invalid minor version: %s", minor)
+	}
+
+	// Return as single integer (e.g., 0.74 -> 74, 0.75 -> 75)
+	return majorInt*100 + minorInt, nil
 }

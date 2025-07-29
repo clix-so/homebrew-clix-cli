@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/clix-so/clix-cli/pkg/logx"
@@ -110,7 +111,6 @@ func CheckDependencies(projectRoot string) []string {
 		"@notifee/react-native",
 		"react-native-device-info",
 		"react-native-get-random-values",
-		"react-native-mmkv",
 		"uuid",
 	}
 
@@ -142,6 +142,11 @@ func CheckDependencies(projectRoot string) []string {
 		if !dependencies[dep] {
 			missing = append(missing, dep)
 		}
+	}
+
+	// Check MMKV separately as it needs version-specific validation
+	if !checkMMKVVersion(projectRoot, dependencies) {
+		missing = append(missing, "react-native-mmkv (incorrect version)")
 	}
 
 	return missing
@@ -366,4 +371,127 @@ func CheckClixAppIntegration(projectRoot string) bool {
 	}
 
 	return false
+}
+
+// checkMMKVVersion validates if the correct MMKV version is installed for the React Native version
+func checkMMKVVersion(projectRoot string, dependencies map[string]bool) bool {
+	// Check if MMKV is installed at all
+	if !dependencies["react-native-mmkv"] {
+		return false
+	}
+
+	// Get package.json to check versions
+	packageJSONPath := filepath.Join(projectRoot, "package.json")
+	data, err := os.ReadFile(packageJSONPath)
+	if err != nil {
+		return false
+	}
+
+	var packageJSON map[string]any
+	if err := json.Unmarshal(data, &packageJSON); err != nil {
+		return false
+	}
+
+	// Get installed package versions
+	var reactNativeVersion, mmkvVersion string
+	if deps, ok := packageJSON["dependencies"].(map[string]any); ok {
+		if rnVersion, exists := deps["react-native"]; exists {
+			if versionStr, ok := rnVersion.(string); ok {
+				reactNativeVersion = versionStr
+			}
+		}
+		if mmkv, exists := deps["react-native-mmkv"]; exists {
+			if versionStr, ok := mmkv.(string); ok {
+				mmkvVersion = versionStr
+			}
+		}
+	}
+
+	if reactNativeVersion == "" || mmkvVersion == "" {
+		return false
+	}
+
+	// Parse React Native version
+	rnVersion, err := parseReactNativeVersionForDoctor(reactNativeVersion)
+	if err != nil {
+		return false
+	}
+
+	// Parse MMKV version to get major version
+	mmkvMajor, err := parseMMKVMajorVersion(mmkvVersion)
+	if err != nil {
+		return false
+	}
+
+	// Check version compatibility
+	switch {
+	case rnVersion >= 74 && mmkvMajor >= 3:
+		return true // RN 0.74+ should use MMKV 3.x
+	case rnVersion < 74 && mmkvMajor == 2:
+		return true // RN < 0.74 should use MMKV 2.x
+	default:
+		return false // Version mismatch
+	}
+}
+
+// parseReactNativeVersionForDoctor parses React Native version for doctor checks
+func parseReactNativeVersionForDoctor(versionStr string) (int, error) {
+	// Remove common prefixes and suffixes
+	version := strings.TrimPrefix(versionStr, "^")
+	version = strings.TrimPrefix(version, "~")
+	version = strings.TrimPrefix(version, ">=")
+	version = strings.TrimPrefix(version, "<=")
+	version = strings.TrimPrefix(version, ">")
+	version = strings.TrimPrefix(version, "<")
+	
+	// Split by dots to get major.minor
+	parts := strings.Split(version, ".")
+	if len(parts) < 2 {
+		return 0, fmt.Errorf("invalid version format: %s", versionStr)
+	}
+
+	major := strings.TrimSpace(parts[0])
+	minor := strings.TrimSpace(parts[1])
+
+	// Parse major version
+	majorInt, err := strconv.Atoi(major)
+	if err != nil {
+		return 0, fmt.Errorf("invalid major version: %s", major)
+	}
+
+	// Parse minor version
+	minorInt, err := strconv.Atoi(minor)
+	if err != nil {
+		return 0, fmt.Errorf("invalid minor version: %s", minor)
+	}
+
+	// Return as single integer (e.g., 0.74 -> 74, 0.75 -> 75)
+	return majorInt*100 + minorInt, nil
+}
+
+// parseMMKVMajorVersion extracts the major version number from MMKV version string
+func parseMMKVMajorVersion(versionStr string) (int, error) {
+	// Remove common prefixes
+	version := strings.TrimPrefix(versionStr, "^")
+	version = strings.TrimPrefix(version, "~")
+	version = strings.TrimPrefix(version, ">=")
+	version = strings.TrimPrefix(version, "<=")
+	version = strings.TrimPrefix(version, ">")
+	version = strings.TrimPrefix(version, "<")
+	
+	// Split by dots to get major version
+	parts := strings.Split(version, ".")
+	if len(parts) < 1 {
+		return 0, fmt.Errorf("invalid version format: %s", versionStr)
+	}
+
+	major := strings.TrimSpace(parts[0])
+	
+	// Parse major version
+	majorInt, err := strconv.Atoi(major)
+	if err != nil {
+		return 0, fmt.Errorf("invalid major version: %s", major)
+	}
+
+	return majorInt, nil
 }
