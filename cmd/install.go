@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/clix-so/clix-cli/pkg/android"
+	"github.com/clix-so/clix-cli/pkg/expo"
 	"github.com/clix-so/clix-cli/pkg/ios"
 	"github.com/clix-so/clix-cli/pkg/logx"
 	"github.com/clix-so/clix-cli/pkg/utils"
@@ -15,17 +16,18 @@ import (
 
 var iosFlag bool
 var androidFlag bool
+var expoFlag bool
 
 var installCmd = &cobra.Command{
 	Use:   "install",
 	Short: "Install Clix SDK into your project",
 	Run: func(cmd *cobra.Command, args []string) {
 		// Automatically Detect the platform
-		if !iosFlag && !androidFlag {
-			iosFlag, androidFlag = utils.DetectPlatform()
+		if !iosFlag && !androidFlag && !expoFlag {
+			iosFlag, androidFlag, expoFlag = utils.DetectPlatform()
 
-			if !iosFlag && !androidFlag {
-				fmt.Fprintln(os.Stderr, "❗ Could not detect platform. Please specify --ios or --android")
+			if !iosFlag && !androidFlag && !expoFlag {
+				fmt.Fprintln(os.Stderr, "❗ Could not detect platform. Please specify --ios, --android, or --expo")
 				os.Exit(1)
 			}
 		}
@@ -37,6 +39,10 @@ var installCmd = &cobra.Command{
 		if androidFlag {
 			handleAndroidInstall()
 		}
+
+		if expoFlag {
+			handleExpoInstall()
+		}
 	},
 }
 
@@ -44,6 +50,7 @@ func init() {
 	rootCmd.AddCommand(installCmd)
 	installCmd.Flags().BoolVar(&iosFlag, "ios", false, "Install Clix for iOS")
 	installCmd.Flags().BoolVar(&androidFlag, "android", false, "Install Clix for Android")
+	installCmd.Flags().BoolVar(&expoFlag, "expo", false, "Install Clix for React Native Expo")
 }
 
 // Function to handle iOS installation
@@ -241,4 +248,16 @@ func handleAndroidInstall() {
 	
 	logx.NewLine()
 	android.HandleAndroidInstall(apiKey, projectID)
+}
+
+// Function to handle React Native Expo installation
+func handleExpoInstall() {
+	fmt.Println("🚀 Installing Clix SDK for React Native Expo...")
+	logx.Separatorln()
+
+	projectID := utils.Prompt("Enter your Project ID")
+	apiKey := utils.Prompt("Enter your Public API Key")
+	
+	logx.NewLine()
+	expo.HandleExpoInstall(apiKey, projectID)
 }
