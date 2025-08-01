@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/clix-so/clix-cli/pkg/logx"
+	"github.com/clix-so/clix-cli/pkg/utils"
 )
 
 // RunDoctor checks the Flutter project setup for Clix SDK
@@ -24,11 +25,12 @@ func RunDoctor() error {
 		fn   func(string) (bool, string)
 	}{
 		{"Flutter Project Detection", checkFlutterProject},
+		{"Firebase CLI Installation", checkFirebaseCLI},
+		{"FlutterFire CLI Installation", checkFlutterFireCLI},
+		{"Firebase Options Configuration", checkFirebaseOptions},
 		{"Clix Flutter SDK Dependency", checkClixDependency},
 		{"Firebase Core Dependency", checkFirebaseCoreDependency},
 		{"Firebase Messaging Dependency", checkFirebaseMessagingDependency},
-		{"Firebase Android Config", checkFirebaseAndroidConfig},
-		{"Firebase iOS Config", checkFirebaseIOSConfig},
 		{"Main.dart Configuration", checkMainDartConfiguration},
 	}
 
@@ -127,21 +129,43 @@ func checkFirebaseMessagingDependency(projectRoot string) (bool, string) {
 	return true, ""
 }
 
-// checkFirebaseAndroidConfig verifies Firebase Android configuration
-func checkFirebaseAndroidConfig(projectRoot string) (bool, string) {
-	configPath := filepath.Join(projectRoot, "android", "app", "google-services.json")
-	if _, err := os.Stat(configPath); err != nil {
-		return false, "google-services.json not found at android/app/google-services.json"
+// checkFirebaseCLI verifies Firebase CLI is installed
+func checkFirebaseCLI(projectRoot string) (bool, string) {
+	if err := utils.RunShellCommand("firebase", "--version"); err != nil {
+		return false, "Firebase CLI not installed. Run: npm install -g firebase-tools"
 	}
-
 	return true, ""
 }
 
-// checkFirebaseIOSConfig verifies Firebase iOS configuration
-func checkFirebaseIOSConfig(projectRoot string) (bool, string) {
-	configPath := filepath.Join(projectRoot, "ios", "Runner", "GoogleService-Info.plist")
+// checkFlutterFireCLI verifies FlutterFire CLI is installed
+func checkFlutterFireCLI(projectRoot string) (bool, string) {
+	if err := utils.RunShellCommand("flutterfire", "--version"); err != nil {
+		return false, "FlutterFire CLI not installed. Run: dart pub global activate flutterfire_cli"
+	}
+	return true, ""
+}
+
+// checkFirebaseOptions verifies firebase_options.dart exists
+func checkFirebaseOptions(projectRoot string) (bool, string) {
+	configPath := filepath.Join(projectRoot, "lib", "firebase_options.dart")
 	if _, err := os.Stat(configPath); err != nil {
-		return false, "GoogleService-Info.plist not found at ios/Runner/GoogleService-Info.plist"
+		return false, "firebase_options.dart not found. Run: flutterfire configure"
+	}
+
+	// Check if Firebase config files exist (they should be created by flutterfire configure)
+	androidConfigPath := filepath.Join(projectRoot, "android", "app", "google-services.json")
+	iosConfigPath := filepath.Join(projectRoot, "ios", "Runner", "GoogleService-Info.plist")
+	
+	var missingFiles []string
+	if _, err := os.Stat(androidConfigPath); err != nil {
+		missingFiles = append(missingFiles, "android/app/google-services.json")
+	}
+	if _, err := os.Stat(iosConfigPath); err != nil {
+		missingFiles = append(missingFiles, "ios/Runner/GoogleService-Info.plist")
+	}
+	
+	if len(missingFiles) > 0 {
+		return false, fmt.Sprintf("missing Firebase config files: %v. Run: flutterfire configure", missingFiles)
 	}
 
 	return true, ""
@@ -167,12 +191,20 @@ func checkMainDartConfiguration(projectRoot string) (bool, string) {
 		issues = append(issues, "Missing firebase_core import")
 	}
 
+	if !strings.Contains(content, "firebase_options.dart") {
+		issues = append(issues, "Missing firebase_options.dart import")
+	}
+
 	if !strings.Contains(content, "clix_flutter") {
 		issues = append(issues, "Missing clix_flutter import")
 	}
 
-	if !strings.Contains(content, "Firebase.initializeApp()") {
-		issues = append(issues, "Missing Firebase.initializeApp() call")
+	if !strings.Contains(content, "Firebase.initializeApp") {
+		issues = append(issues, "Missing Firebase.initializeApp call")
+	}
+
+	if !strings.Contains(content, "DefaultFirebaseOptions.currentPlatform") {
+		issues = append(issues, "Missing DefaultFirebaseOptions.currentPlatform in Firebase.initializeApp")
 	}
 
 	if !strings.Contains(content, "Clix.initialize") {

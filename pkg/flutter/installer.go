@@ -36,7 +36,38 @@ func HandleFlutterInstall(apiKey, projectID string) {
 		return
 	}
 
-	// Step 1: Add dependencies to pubspec.yaml
+	// Step 1: Check and install Firebase CLI
+	logx.Log().WithSpinner().Title().Println("🔧 Checking Firebase CLI...")
+	if err := CheckAndInstallFirebaseCLI(); err != nil {
+		logx.Log().Branch().Failure().Println("Failed to setup Firebase CLI")
+		logx.Log().Indent(6).Code().Println(err.Error())
+		return
+	}
+	logx.Log().Branch().Success().Println("Firebase CLI is ready")
+	logx.NewLine()
+
+	// Step 2: Check and install FlutterFire CLI
+	logx.Log().WithSpinner().Title().Println("🔥 Checking FlutterFire CLI...")
+	if err := CheckAndInstallFlutterFireCLI(); err != nil {
+		logx.Log().Branch().Failure().Println("Failed to setup FlutterFire CLI")
+		logx.Log().Indent(6).Code().Println(err.Error())
+		return
+	}
+	logx.Log().Branch().Success().Println("FlutterFire CLI is ready")
+	logx.NewLine()
+
+	// Step 3: Configure Firebase project
+	logx.Log().WithSpinner().Title().Println("🚀 Configuring Firebase project...")
+	if err := ConfigureFirebaseProject(); err != nil {
+		logx.Log().Branch().Failure().Println("Failed to configure Firebase project")
+		logx.Log().Indent(6).Code().Println(err.Error())
+		fmt.Println("⚠️  Please manually run 'flutterfire configure' to setup Firebase")
+		return
+	}
+	logx.Log().Branch().Success().Println("Firebase project configured")
+	logx.NewLine()
+
+	// Step 4: Add dependencies to pubspec.yaml
 	logx.Log().WithSpinner().Title().Println("📦 Adding dependencies to pubspec.yaml...")
 	if err := AddFlutterDependencies(projectRoot); err != nil {
 		logx.Log().Branch().Failure().Println("Failed to add dependencies to pubspec.yaml")
@@ -51,7 +82,7 @@ func HandleFlutterInstall(apiKey, projectID string) {
 	logx.Log().Branch().Success().Println("Dependencies added to pubspec.yaml")
 	logx.NewLine()
 
-	// Step 2: Install dependencies
+	// Step 5: Install dependencies
 	logx.Log().WithSpinner().Title().Println("📱 Installing Flutter dependencies...")
 	if err := utils.RunShellCommand("flutter", "pub", "get"); err != nil {
 		logx.Log().Branch().Failure().Println("Failed to install Flutter dependencies")
@@ -61,26 +92,17 @@ func HandleFlutterInstall(apiKey, projectID string) {
 	logx.Log().Branch().Success().Println("Flutter dependencies installed successfully")
 	logx.NewLine()
 
-	// Step 3: Check Firebase configuration files
-	logx.Log().WithSpinner().Title().Println("🔧 Checking Firebase configuration files...")
-	hasAndroidConfig := CheckFirebaseConfig(projectRoot, "android")
-	hasIOSConfig := CheckFirebaseConfig(projectRoot, "ios")
-
-	if !hasAndroidConfig || !hasIOSConfig {
-		logx.Log().Branch().Failure().Println("Firebase configuration files missing")
-		if !hasAndroidConfig {
-			logx.Log().Indent(6).Code().Println("Missing: android/app/google-services.json")
-		}
-		if !hasIOSConfig {
-			logx.Log().Indent(6).Code().Println("Missing: ios/Runner/GoogleService-Info.plist")
-		}
-		logx.Log().Indent(6).Code().Println("Download these files from Firebase Console and place them in the correct directories")
+	// Step 6: Verify Firebase configuration
+	logx.Log().WithSpinner().Title().Println("🔧 Verifying Firebase configuration...")
+	if err := VerifyFirebaseConfig(projectRoot); err != nil {
+		logx.Log().Branch().Failure().Println("Firebase configuration verification failed")
+		logx.Log().Indent(6).Code().Println(err.Error())
 		return
 	}
-	logx.Log().Branch().Success().Println("Firebase configuration files found")
+	logx.Log().Branch().Success().Println("Firebase configuration verified")
 	logx.NewLine()
 
-	// Step 4: Update main.dart with Clix initialization
+	// Step 7: Update main.dart with Clix initialization
 	logx.Log().WithSpinner().Title().Println("🔗 Updating main.dart with Clix initialization...")
 	if err := UpdateMainDart(projectRoot, projectID, apiKey); err != nil {
 		logx.Log().Branch().Failure().Println("Failed to update main.dart")
@@ -94,7 +116,7 @@ func HandleFlutterInstall(apiKey, projectID string) {
 	}
 	logx.NewLine()
 
-	// Step 5: iOS-specific setup instructions
+	// Step 8: iOS-specific setup instructions
 	fmt.Println("🍎 iOS-specific setup required:")
 	fmt.Println("==================================================")
 	fmt.Println("1. Open ios/Runner.xcworkspace in Xcode")
@@ -104,7 +126,7 @@ func HandleFlutterInstall(apiKey, projectID string) {
 	fmt.Println("5. Enable 'Remote notifications' in Background Modes")
 	fmt.Println("==================================================")
 
-	// Step 6: Final instructions
+	// Step 9: Final instructions
 	fmt.Println("🎉 Clix SDK Flutter installation completed!")
 	fmt.Println("==================================================")
 	fmt.Println("Next steps:")
@@ -266,6 +288,7 @@ func addClixToMainDart(content, projectID, apiKey string) (string, error) {
 	
 	// Imports to add
 	firebaseImport := "import 'package:firebase_core/firebase_core.dart';"
+	firebaseOptionsImport := "import 'firebase_options.dart';"
 	clixImport := "import 'package:clix_flutter/clix_flutter.dart';"
 	
 	importsAdded := false
@@ -294,6 +317,9 @@ func addClixToMainDart(content, projectID, apiKey string) (string, error) {
 				if !strings.Contains(content, "firebase_core") {
 					result = append(result, firebaseImport)
 				}
+				if !strings.Contains(content, "firebase_options.dart") {
+					result = append(result, firebaseOptionsImport)
+				}
 				if !strings.Contains(content, "clix_flutter") {
 					result = append(result, clixImport)
 				}
@@ -313,7 +339,9 @@ func addClixToMainDart(content, projectID, apiKey string) (string, error) {
 			// Add initialization code after the opening brace
 			result = append(result, "  WidgetsFlutterBinding.ensureInitialized();")
 			result = append(result, "")
-			result = append(result, "  await Firebase.initializeApp();")
+			result = append(result, "  await Firebase.initializeApp(")
+			result = append(result, "    options: DefaultFirebaseOptions.currentPlatform,")
+			result = append(result, "  );")
 			result = append(result, "")
 			result = append(result, "  await Clix.initialize(const ClixConfig(")
 			result = append(result, fmt.Sprintf("    projectId: '%s',", projectID))
@@ -329,9 +357,109 @@ func addClixToMainDart(content, projectID, apiKey string) (string, error) {
 	
 	// If imports weren't added at the beginning, add them
 	if !importsAdded {
-		imports := []string{firebaseImport, clixImport, ""}
+		imports := []string{firebaseImport, firebaseOptionsImport, clixImport, ""}
 		result = append(imports, result...)
 	}
 	
 	return strings.Join(result, "\n"), nil
+}
+
+// CheckAndInstallFirebaseCLI checks if Firebase CLI is installed and installs it if needed
+func CheckAndInstallFirebaseCLI() error {
+	// Check if Firebase CLI is already installed
+	if err := utils.RunShellCommand("firebase", "--version"); err == nil {
+		return nil
+	}
+
+	fmt.Println("Firebase CLI not found. Installing Firebase CLI...")
+	
+	// Try to install Firebase CLI via npm
+	if err := utils.RunShellCommand("npm", "install", "-g", "firebase-tools"); err != nil {
+		return fmt.Errorf("failed to install Firebase CLI via npm. Please install manually: npm install -g firebase-tools")
+	}
+
+	// Verify installation
+	if err := utils.RunShellCommand("firebase", "--version"); err != nil {
+		return fmt.Errorf("Firebase CLI installation failed. Please install manually: npm install -g firebase-tools")
+	}
+
+	return nil
+}
+
+// CheckAndInstallFlutterFireCLI checks if FlutterFire CLI is installed and installs it if needed
+func CheckAndInstallFlutterFireCLI() error {
+	// Check if FlutterFire CLI is already installed
+	if err := utils.RunShellCommand("flutterfire", "--version"); err == nil {
+		return nil
+	}
+
+	fmt.Println("FlutterFire CLI not found. Installing FlutterFire CLI...")
+	
+	// Install FlutterFire CLI
+	if err := utils.RunShellCommand("dart", "pub", "global", "activate", "flutterfire_cli"); err != nil {
+		return fmt.Errorf("failed to install FlutterFire CLI. Please install manually: dart pub global activate flutterfire_cli")
+	}
+
+	// Verify installation
+	if err := utils.RunShellCommand("flutterfire", "--version"); err != nil {
+		return fmt.Errorf("FlutterFire CLI installation failed. Please ensure dart is in PATH and run: dart pub global activate flutterfire_cli")
+	}
+
+	return nil
+}
+
+// ConfigureFirebaseProject runs flutterfire configure to setup Firebase project
+func ConfigureFirebaseProject() error {
+	// Check if firebase_options.dart already exists
+	if _, err := os.Stat("lib/firebase_options.dart"); err == nil {
+		fmt.Println("Firebase project appears to be already configured (firebase_options.dart found)")
+		return nil
+	}
+
+	fmt.Println("Running 'flutterfire configure' to setup Firebase project...")
+	fmt.Println("Please follow the interactive prompts to:")
+	fmt.Println("1. Select your Firebase project")
+	fmt.Println("2. Choose platforms (iOS and Android)")
+	fmt.Println("3. Configure bundle IDs")
+	
+	// Run flutterfire configure interactively
+	if err := utils.RunShellCommand("flutterfire", "configure"); err != nil {
+		return fmt.Errorf("flutterfire configure failed. Please run manually: flutterfire configure")
+	}
+
+	// Verify firebase_options.dart was created
+	if _, err := os.Stat("lib/firebase_options.dart"); err != nil {
+		return fmt.Errorf("firebase_options.dart was not created. Please run 'flutterfire configure' manually")
+	}
+
+	return nil
+}
+
+// VerifyFirebaseConfig verifies that Firebase is properly configured
+func VerifyFirebaseConfig(projectRoot string) error {
+	// Check if firebase_options.dart exists
+	firebaseOptionsPath := filepath.Join(projectRoot, "lib", "firebase_options.dart")
+	if _, err := os.Stat(firebaseOptionsPath); err != nil {
+		return fmt.Errorf("firebase_options.dart not found. Please run 'flutterfire configure' first")
+	}
+
+	// Check if Firebase configuration files exist in their proper locations
+	androidConfigPath := filepath.Join(projectRoot, "android", "app", "google-services.json")
+	iosConfigPath := filepath.Join(projectRoot, "ios", "Runner", "GoogleService-Info.plist")
+	
+	var missingFiles []string
+	
+	if _, err := os.Stat(androidConfigPath); err != nil {
+		missingFiles = append(missingFiles, "android/app/google-services.json")
+	}
+	
+	if _, err := os.Stat(iosConfigPath); err != nil {
+		missingFiles = append(missingFiles, "ios/Runner/GoogleService-Info.plist")
+	}
+	
+	if len(missingFiles) > 0 {
+		return fmt.Errorf("missing Firebase config files: %v. These should be automatically created by 'flutterfire configure'", missingFiles)
+	}
+
+	return nil
 }
