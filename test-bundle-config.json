@@ -1,0 +1,10 @@
+{
+  "expo": {
+    "name": "test-app",
+    "slug": "test-app",
+    "version": "1.0.0",
+    "plugins": [
+      "expo-build-properties"
+    ]
+  }
+}
