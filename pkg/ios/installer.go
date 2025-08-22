@@ -253,21 +253,94 @@ func InstallClixIOS(projectID, apiKey string) error {
 	if strings.Contains(updated, "didFinishLaunchingWithOptions") && !strings.Contains(updated, "override func application") {
 		lines := strings.Split(updated, "\n")
 		for i, line := range lines {
-			if strings.Contains(line, "func application") && strings.Contains(line, "didFinishLaunchingWithOptions") {
-				// Add override keyword
-				indent := ""
-				for _, ch := range line {
-					if ch == ' ' || ch == '\t' {
-						indent += string(ch)
-					} else {
-						break
+			// Handle both single-line and multi-line function declarations
+			trimmedLine := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmedLine, "func application") {
+				// Check if this line or subsequent lines contain didFinishLaunchingWithOptions
+				foundMethod := strings.Contains(line, "didFinishLaunchingWithOptions")
+				if !foundMethod {
+					// Check next few lines for didFinishLaunchingWithOptions (multiline case)
+					for j := i + 1; j < len(lines) && j < i+5; j++ {
+						if strings.Contains(lines[j], "didFinishLaunchingWithOptions") {
+							foundMethod = true
+							break
+						}
+						// Stop searching if we hit another function or closing brace
+						nextTrimmed := strings.TrimSpace(lines[j])
+						if strings.HasPrefix(nextTrimmed, "func ") || nextTrimmed == "}" {
+							break
+						}
 					}
 				}
-				lines[i] = indent + "override " + strings.TrimSpace(line)
-				break
+				
+				if foundMethod {
+					// Add override keyword
+					indent := ""
+					for _, ch := range line {
+						if ch == ' ' || ch == '\t' {
+							indent += string(ch)
+						} else {
+							break
+						}
+					}
+					lines[i] = indent + "override " + strings.TrimSpace(line)
+					break
+				}
 			}
 		}
 		updated = strings.Join(lines, "\n")
+	}
+
+	// 3.1. Add override keyword to other AppDelegate lifecycle methods
+	appDelegateMethods := []string{
+		"applicationDidBecomeActive",
+		"applicationWillResignActive", 
+		"applicationDidEnterBackground",
+		"applicationWillEnterForeground",
+		"applicationWillTerminate",
+		"applicationDidReceiveMemoryWarning",
+	}
+
+	for _, methodName := range appDelegateMethods {
+		if strings.Contains(updated, methodName) && !strings.Contains(updated, "override func "+methodName) {
+			lines := strings.Split(updated, "\n")
+			for i, line := range lines {
+				trimmedLine := strings.TrimSpace(line)
+				if strings.HasPrefix(trimmedLine, "func "+methodName) {
+					// Check if this is the method we're looking for (single-line or multiline)
+					foundMethod := strings.Contains(line, methodName)
+					if !foundMethod {
+						// Check next few lines for method name (multiline case)
+						for j := i + 1; j < len(lines) && j < i+3; j++ {
+							if strings.Contains(lines[j], methodName) {
+								foundMethod = true
+								break
+							}
+							// Stop searching if we hit another function or closing brace
+							nextTrimmed := strings.TrimSpace(lines[j])
+							if strings.HasPrefix(nextTrimmed, "func ") || nextTrimmed == "}" {
+								break
+							}
+						}
+					}
+					
+					if foundMethod {
+						// Add override keyword
+						indent := ""
+						for _, ch := range line {
+							if ch == ' ' || ch == '\t' {
+								indent += string(ch)
+							} else {
+								break
+							}
+						}
+						lines[i] = indent + "override " + strings.TrimSpace(line)
+						break
+					}
+				}
+			}
+			updated = strings.Join(lines, "\n")
+		}
 	}
 
 	// 4. Add FirebaseApp.configure and Clix.initialize before super.application or return true
