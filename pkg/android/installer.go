@@ -69,16 +69,21 @@ func HandleAndroidInstall(apiKey, projectID string) {
 
 	logx.Log().WithSpinner().Println(logx.TitleClixInitializationCheck)
 	appOK, code := CheckClixCoreImport(projectRoot)
-	if !appOK {
-		if code == "missing-application" {
-			ok, _ := AddApplication(projectRoot, apiKey, projectID)
-			if ok {
-				appOK = true
-			}
+	originalOK := appOK
+	autoCreated := false
+	if !appOK && code == "missing-application" {
+		if ok, _ := AddApplication(projectRoot, apiKey, projectID); ok {
+			appOK = true
+			autoCreated = true
 		}
 	}
 	if appOK {
-		logx.Log().Branch().Success().Println(logx.MsgAppCreateSuccess)
+		// Distinguish between already configured vs auto-fixed
+		if autoCreated && !originalOK {
+			logx.Log().Branch().Success().Println(logx.MsgAppCreateSuccess)
+		} else {
+			logx.Log().Branch().Success().Println(logx.MsgClixInitSuccess)
+		}
 	} else {
 		logx.Log().Branch().Failure().Println(logx.MsgAppFixFailure)
 		logx.Log().Indent(6).Code().Println(logx.ClixInitializationLink)
@@ -93,7 +98,6 @@ func HandleAndroidInstall(apiKey, projectID string) {
 	}
 	logx.NewLine()
 }
-
 
 // AddGradleRepository tries to insert mavenCentral() into settings.gradle(.kts) or build.gradle(.kts)
 func AddGradleRepository(projectRoot string) bool {
