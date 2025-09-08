@@ -6,22 +6,81 @@ import (
 
 // StringContainsClixInitializeInOnCreate checks if Clix.initialize(this, ...) is called inside onCreate
 func StringContainsClixInitializeInOnCreate(content string) bool {
-	// Simple heuristic: check for 'void onCreate' or 'fun onCreate', then 'Clix.initialize(this'
+	// Find signature variants
 	onCreateIdx := -1
-	if idx := IndexOf(content, "void onCreate"); idx != -1 {
+	if idx := IndexOf(content, "void onCreate"); idx != -1 { // Java
 		onCreateIdx = idx
-	} else if idx := IndexOf(content, "fun onCreate"); idx != -1 {
+	} else if idx := IndexOf(content, "fun onCreate"); idx != -1 { // Kotlin
 		onCreateIdx = idx
 	}
 	if onCreateIdx == -1 {
 		return false
 	}
-	// Check 200 chars after onCreate for Clix.initialize(this
-	endIdx := onCreateIdx + 200
-	if endIdx > len(content) {
-		endIdx = len(content)
+
+	// Find opening brace after signature (skip annotations / modifiers already inside substring)
+	openIdx := -1
+	for i := onCreateIdx; i < len(content); i++ {
+		c := content[i]
+		if c == '{' {
+			openIdx = i
+			break
+		}
+		if c == ';' { // Not a method definition
+			return false
+		}
 	}
-	return Contains(content[onCreateIdx:endIdx], "Clix.initialize(this")
+	if openIdx == -1 {
+		return false
+	}
+
+	// Extract full block by brace depth tracking
+	depth := 0
+	endIdx := -1
+	for i := openIdx; i < len(content); i++ {
+		ch := content[i]
+		if ch == '{' {
+			depth++
+		} else if ch == '}' {
+			depth--
+			if depth == 0 {
+				endIdx = i + 1
+				break
+			}
+		}
+	}
+	if endIdx == -1 { // Malformed braces fallback (limit 500 chars)
+		endIdx = openIdx + 500
+		if endIdx > len(content) {
+			endIdx = len(content)
+		}
+	}
+
+	block := content[openIdx:endIdx]
+	norm := removeAllWhitespace(block)
+
+	// Basic pattern (no whitespace) e.g., Clix.initialize(this
+	if Contains(norm, "Clix.initialize(this") {
+		return true
+	}
+	// Allow generics: Clix.initialize<...>(this
+	if Contains(norm, "Clix.initialize<") && Contains(norm, "(this") {
+		return true
+	}
+	return false
+}
+
+// removeAllWhitespace strips common whitespace to allow cross-line pattern detection
+func removeAllWhitespace(s string) string {
+	buf := make([]byte, 0, len(s))
+	for i := 0; i < len(s); i++ {
+		switch s[i] {
+		case ' ', '\t', '\n', '\r':
+			continue
+		default:
+			buf = append(buf, s[i])
+		}
+	}
+	return string(buf)
 }
 
 // Contains is a helper for substring check (to avoid strings package import)
@@ -48,8 +107,6 @@ func IndexOf(s, substr string) int {
 	}
 	return -1
 }
-
-
 
 // RunDoctor runs all Android doctor checks.
 func RunDoctor(projectRoot string) {

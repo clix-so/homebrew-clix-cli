@@ -63,9 +63,8 @@ func CheckGradleDependency(projectRoot string) bool {
 	} else if Contains(content, "implementation(libs.clix.android.sdk)") {
 		found = true
 	}
-	
 
-	if (found) {
+	if found {
 		logx.Log().Success().Println(logx.MsgClixDependencySuccess)
 		return true
 	}
@@ -99,7 +98,7 @@ func CheckGradlePlugin(projectRoot string) bool {
 		}
 	}
 
-	if (found) {
+	if found {
 		logx.Log().Success().Println(logx.MsgGmsPluginFound)
 		return true
 	}
@@ -132,8 +131,8 @@ func CheckClixCoreImport(projectRoot string) (bool, string) {
 		return false, "unknown"
 	}
 
-	ktPath := filepath.Join(sourceDir, appPath + ".kt")
-	javaPath := filepath.Join(sourceDir, appPath + ".java")
+	ktPath := filepath.Join(sourceDir, appPath+".kt")
+	javaPath := filepath.Join(sourceDir, appPath+".java")
 
 	if _, err := os.Stat(javaPath); err == nil {
 		appPath = javaPath
