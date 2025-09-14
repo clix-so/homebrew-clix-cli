@@ -118,11 +118,25 @@ func DisplayIOSInstructions(projectID string, apiKey string, verbose bool, dryRu
 		logx.NewLine()
 		logx.Log().Println("Press Enter after you have configured everything for the extension target...")
 		_, _ = fmt.Scanln()
+
+		// Add manual Background Modes steps
+		logx.NewLine()
+		logx.Log().Title().Println("5️⃣  Enable Background Modes on Main App (Manual)")
+		logx.Log().Indent(2).Println("1. Select your MAIN app target.")
+		logx.Log().Indent(2).Println("2. Open the 'Signing & Capabilities' tab.")
+		logx.Log().Indent(2).Println("3. Click '+' and add 'Background Modes'.")
+		logx.Log().Indent(2).Println("4. Check the boxes for:")
+		logx.Log().Indent(4).Println("- Background fetch")
+		logx.Log().Indent(4).Println("- Remote notifications")
+		logx.NewLine()
+		logx.Log().Println("Press Enter after you have enabled Background Modes...")
+		_, _ = fmt.Scanln()
 	} else {
 		logx.Log().Branch().Success().Println("✅ Xcode project configured successfully!")
 		logx.Log().Indent(2).Println("- App Groups capability added to main app target")
-		logx.Log().Indent(2).Println("- App Groups capability added to NotificationServiceExtension target")
-		logx.Log().Indent(2).Println("- Clix framework added to NotificationServiceExtension target with 'Embed & Sign'")
+		logx.Log().Indent(2).Println("- Background Modes ('Background fetch', 'Remote notifications') enabled on main app")
+		logx.Log().Indent(2).Println("- App Groups capability added to NotificationServiceExtension target (if present)")
+		logx.Log().Indent(2).Println("- Clix framework added to NotificationServiceExtension target with 'Embed & Sign' (if present)")
 		logx.Log().Indent(2).Println("- NotificationServiceExtension is now ready to handle Clix push notifications")
 		logx.NewLine()
 		logx.Log().Println("Press Enter to continue...")
@@ -280,7 +294,7 @@ func InstallClixIOS(projectID, apiKey string) error {
 						}
 					}
 				}
-				
+
 				if foundMethod {
 					// Add override keyword
 					indent := ""
@@ -302,7 +316,7 @@ func InstallClixIOS(projectID, apiKey string) error {
 	// 3.1. Add override keyword to other AppDelegate lifecycle methods
 	appDelegateMethods := []string{
 		"applicationDidBecomeActive",
-		"applicationWillResignActive", 
+		"applicationWillResignActive",
 		"applicationDidEnterBackground",
 		"applicationWillEnterForeground",
 		"applicationWillTerminate",
@@ -331,7 +345,7 @@ func InstallClixIOS(projectID, apiKey string) error {
 							}
 						}
 					}
-					
+
 					if foundMethod {
 						// Add override keyword
 						indent := ""

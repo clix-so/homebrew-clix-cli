@@ -252,7 +252,8 @@ func ConfigureXcodeProject(projectID string, verbose bool, dryRun bool) error {
 
 	fmt.Println("✅ Xcode project configured successfully!")
 	fmt.Println("   - App Groups capability added")
-	fmt.Println("   - Clix framework added to NotificationServiceExtension")
+	fmt.Println("   - Background Modes enabled: fetch, remote-notification")
+	fmt.Println("   - Clix framework added to NotificationServiceExtension (if present)")
 
 	return nil
 }

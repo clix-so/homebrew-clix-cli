@@ -4,6 +4,7 @@ require 'xcodeproj'
 require 'fileutils'
 require 'optparse'
 require 'json'
+require 'pathname'
 
 # Parse command-line options
 options = {}
@@ -87,9 +88,7 @@ begin
   
   extension_target = project.targets.find { |t| t.name == options[:extension_target] }
   if extension_target.nil?
-    log("Warning: Extension target '#{options[:extension_target]}' not found. Skipping extension-specific configuration.", options)
-    result(false, "Extension target '#{options[:extension_target]}' not found. Skipping extension-specific configuration.")
-    exit 1
+    log("Warning: Extension target '#{options[:extension_target]}' not found. Continuing without extension-specific configuration.", options)
   end
   
   log("Found main target: #{main_target.name}", options)
@@ -105,6 +104,7 @@ begin
   extension_modified = false
   main_framework_added = false
   extension_framework_added = false
+  background_modes_added = false
   
   #-----------------------------------------
   # 1. Configure main app target entitlements
@@ -207,6 +207,77 @@ begin
     
     # Write entitlements back to file
     Xcodeproj::Plist.write_to_path(entitlements, entitlements_path)
+  end
+
+  #-----------------------------------------
+  # 1.5 Configure Background Modes (Info.plist)
+  #-----------------------------------------
+  # Resolve a usable Info.plist path for the main target and add UIBackgroundModes
+  def resolve_path(raw_path, project_dir, target_name)
+    return nil if raw_path.nil? || raw_path.to_s.strip.empty?
+    p = raw_path.dup
+    replacements = {
+      '$(SRCROOT)' => project_dir,
+      '${SRCROOT}' => project_dir,
+      '$(PROJECT_DIR)' => project_dir,
+      '${PROJECT_DIR}' => project_dir,
+      '$(TARGET_NAME)' => target_name,
+      '${TARGET_NAME}' => target_name,
+      '$(PRODUCT_NAME)' => target_name,
+      '${PRODUCT_NAME}' => target_name
+    }
+    replacements.each { |k, v| p = p.gsub(k, v) }
+    # Remove surrounding quotes if any
+    p = p.gsub(/^"|"$/, '')
+    # If still relative, resolve against project_dir
+    Pathname.new(p).absolute? ? p : File.expand_path(File.join(project_dir, p))
+  end
+
+  # Collect unique Info.plist paths across configurations
+  project_dir = File.dirname(options[:project_path])
+  plist_paths = main_target.build_configurations.map do |config|
+    raw = config.build_settings['INFOPLIST_FILE']
+    resolve_path(raw, project_dir, main_target.name)
+  end.compact.uniq
+
+  if plist_paths.empty?
+    log("Could not resolve Info.plist path from build settings; attempting common locations", options)
+    # Try typical locations
+    candidates = [
+      File.join(project_dir, main_target.name, 'Info.plist'),
+      File.join(project_dir, 'Info.plist')
+    ]
+    plist_paths = candidates.select { |p| File.exist?(p) }
+  end
+
+  if !plist_paths.empty?
+    plist_paths.each do |plist_path|
+      begin
+        log("Updating UIBackgroundModes in: #{plist_path}", options)
+        info = File.exist?(plist_path) ? Xcodeproj::Plist.read_from_path(plist_path) : {}
+        modes = info['UIBackgroundModes'] || []
+        modes = modes.dup # avoid modifying frozen arrays
+        desired = ['fetch', 'remote-notification']
+        added_any = false
+        desired.each do |mode|
+          unless modes.include?(mode)
+            modes << mode
+            added_any = true
+          end
+        end
+        if added_any
+          info['UIBackgroundModes'] = modes
+          Xcodeproj::Plist.write_to_path(info, plist_path)
+          background_modes_added = true
+        else
+          log("UIBackgroundModes already includes required modes", options)
+        end
+      rescue => e
+        log("Failed to update UIBackgroundModes at #{plist_path}: #{e.message}", options)
+      end
+    end
+  else
+    log("No Info.plist found; skipped UIBackgroundModes update", options)
   end
   
   #-----------------------------------------
@@ -311,7 +382,8 @@ begin
     main_target_modified: main_target_modified,
     extension_modified: extension_modified,
     main_framework_added: main_framework_added,
-    extension_framework_added: extension_framework_added
+  extension_framework_added: extension_framework_added,
+  background_modes_added: background_modes_added
   }
   
   result(true, "Xcode project configuration completed successfully", modifications)
