@@ -49,35 +49,51 @@ func EnsureRuby() error {
 
 // EnsureXcodeproj ensures the xcodeproj gem is installed
 func EnsureXcodeproj() error {
-	// Check if xcodeproj is already installed
-	cmd := exec.Command("gem", "list", "-i", "xcodeproj")
-	output, err := cmd.CombinedOutput()
-	if err == nil && strings.TrimSpace(string(output)) == "true" {
-		return nil // Gem is already installed
+	// Xcode 16 introduces PBXFileSystemSynchronizedRootGroup which requires xcodeproj >= 1.25.2
+	const minVersion = ">= 1.25.2"
+
+	// Check if a compatible version is installed
+	// `gem query -i -n ^xcodeproj$ -v ">= 1.25.2"` returns "true" when any matching version is installed
+	checkCmd := exec.Command("gem", "query", "-i", "-n", "^xcodeproj$", "-v", minVersion)
+	checkOut, checkErr := checkCmd.CombinedOutput()
+	if checkErr == nil && strings.TrimSpace(string(checkOut)) == "true" {
+		return nil // Compatible version already present
 	}
 
-	fmt.Println("⏳ Installing xcodeproj gem...")
+	// Print the currently loaded version for diagnostics (best-effort)
+	_ = exec.Command("ruby", "-e", "begin; require 'xcodeproj'; puts 'Detected xcodeproj ' + Xcodeproj::VERSION; rescue; end").Run()
 
-	// Try to install without sudo first
-	cmd = exec.Command("gem", "install", "xcodeproj")
+	fmt.Printf("⏳ Installing/upgrading xcodeproj gem to %s...\n", minVersion)
+
+	// Try to install or upgrade without sudo first
+	installArgs := []string{"install", "xcodeproj", "-v", minVersion}
+	cmd := exec.Command("gem", installArgs...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	err = cmd.Run()
+	err := cmd.Run()
 
 	// If installation fails, try with sudo
 	if err != nil {
 		fmt.Println("🔐 Regular gem installation failed. Trying with sudo...")
 		fmt.Println("You may be prompted for your password.")
 
-		cmd = exec.Command("sudo", "gem", "install", "xcodeproj")
+		sudoArgs := append([]string{"gem"}, installArgs...)
+		cmd = exec.Command("sudo", sudoArgs...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to install xcodeproj gem: %v", err)
+			return fmt.Errorf("failed to install required xcodeproj gem version (%s): %v\nThis gem version is required to parse newer Xcode projects that use PBXFileSystemSynchronizedRootGroup.\nYou can also install it manually with: sudo gem install xcodeproj -v '%s'", minVersion, err, minVersion)
 		}
 	}
 
-	fmt.Println("✅ xcodeproj gem installed successfully")
+	// Re-check to confirm
+	checkCmd = exec.Command("gem", "query", "-i", "-n", "^xcodeproj$", "-v", minVersion)
+	checkOut, checkErr = checkCmd.CombinedOutput()
+	if !(checkErr == nil && strings.TrimSpace(string(checkOut)) == "true") {
+		return fmt.Errorf("xcodeproj gem did not meet version requirement %s even after install; please ensure RubyGems is configured and try again", minVersion)
+	}
+
+	fmt.Println("✅ xcodeproj gem is up to date")
 	return nil
 }
 
