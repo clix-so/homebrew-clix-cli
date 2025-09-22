@@ -145,7 +145,7 @@ func AddGradleDependency(projectRoot string) bool {
 		// Try to insert after 'dependencies {' or at end
 		if idx := IndexOf(content, "dependencies {"); idx != -1 {
 			insertAt := idx + len("dependencies {")
-			newContent := content[:insertAt] + "\n    implementation(\"so.clix:clix-android-sdk:1.0.0\")" + content[insertAt:]
+			newContent := content[:insertAt] + "\n    implementation(\"so.clix:clix-android-sdk:1.1.0\")" + content[insertAt:]
 			err = ioutil.WriteFile(file, []byte(newContent), 0644)
 			return err == nil
 		}

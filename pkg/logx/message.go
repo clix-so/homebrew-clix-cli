@@ -18,7 +18,7 @@ const (
 	FixClixDependency = "To resolve this, add the following to app/build.gradle(.kts):"
 	MsgClixDependencyFixFailure = "Automatic fix failed. Please add the following to app/build.gradle(.kts):"
 	CodeClixDependency = `dependencies {
-	implementation("so.clix:clix-android-sdk:1.0.0")
+	implementation("so.clix:clix-android-sdk:1.1.0")
 }`
 
 	// Google Services Plugin
