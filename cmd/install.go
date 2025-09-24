@@ -29,7 +29,7 @@ var installCmd = &cobra.Command{
 			iosFlag, androidFlag, expoFlag, flutterFlag = utils.DetectAllPlatforms()
 
 			if !iosFlag && !androidFlag && !expoFlag && !flutterFlag {
-				fmt.Fprintln(os.Stderr, "❗ Could not detect platform. Please specify --ios, --android, --expo, or --flutter")
+				logx.Log().Warn().Println("Could not detect platform. Please specify --ios, --android, --expo, or --flutter")
 				os.Exit(1)
 			}
 		}
@@ -64,6 +64,8 @@ func init() {
 
 // Function to handle iOS installation
 func handleIOSInstall() {
+	logx.Log().Title().Println("Installing Clix SDK for iOS…")
+	logx.Separatorln()
 	projectID := utils.Prompt("Enter your Project ID")
 	apiKey := utils.Prompt("Enter your Public API Key")
 
@@ -73,63 +75,62 @@ func handleIOSInstall() {
 	// Install Clix iOS SDK
 	err := ios.InstallClixIOS(projectID, apiKey)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "❌ Failed:", err)
+		logx.Log().Failure().Println(fmt.Sprintf("Failed: %v", err))
 		return
 	}
 
 	// Update NotificationServiceExtension
 	extensionErrors := ios.UpdateNotificationServiceExtension(projectID)
 	if len(extensionErrors) > 0 {
-		fmt.Fprintln(os.Stderr, "❌ Failed to update NotificationServiceExtension:")
+		logx.Log().Failure().Println("Failed to update NotificationServiceExtension:")
 		for _, err := range extensionErrors {
-			fmt.Fprintln(os.Stderr, "  -", err)
+			logx.Log().Indent(2).Println("- " + err.Error())
 		}
 	} else {
-		fmt.Println("✅ NotificationServiceExtension successfully configured")
+		logx.Log().Success().Println("NotificationServiceExtension successfully configured")
 	}
 
 	// Run doctor to verify setup
-	fmt.Println("\n🔍 Running doctor to verify Clix SDK and push notification setup...")
+	logx.NewLine()
+	logx.Log().Title().Println("Running doctor to verify Clix SDK and push notification setup…")
 	doctorErr := ios.RunDoctor()
 	if doctorErr != nil {
-		fmt.Fprintln(os.Stderr, "❌ Doctor check failed:", doctorErr)
+		logx.Log().Failure().Println(fmt.Sprintf("Doctor check failed: %v", doctorErr))
 	}
 }
 
-
-
 // Function to handle Android installation
 func handleAndroidInstall() {
-	fmt.Println("🤖 Installing Clix SDK for Android...")
+	logx.Log().Title().Println("Installing Clix SDK for Android…")
 	logx.Separatorln()
 
 	projectID := utils.Prompt("Enter your Project ID")
 	apiKey := utils.Prompt("Enter your Public API Key")
-	
+
 	logx.NewLine()
 	android.HandleAndroidInstall(apiKey, projectID)
 }
 
 // Function to handle React Native Expo installation
 func handleExpoInstall() {
-	fmt.Println("🚀 Installing Clix SDK for React Native Expo...")
+	logx.Log().Title().Println("Installing Clix SDK for React Native Expo…")
 	logx.Separatorln()
 
 	projectID := utils.Prompt("Enter your Project ID")
 	apiKey := utils.Prompt("Enter your Public API Key")
-	
+
 	logx.NewLine()
 	expo.HandleExpoInstall(apiKey, projectID)
 }
 
 // Function to handle Flutter installation
 func handleFlutterInstall() {
-	fmt.Println("🚀 Installing Clix SDK for Flutter...")
+	logx.Log().Title().Println("Installing Clix SDK for Flutter…")
 	logx.Separatorln()
 
 	projectID := utils.Prompt("Enter your Project ID")
 	apiKey := utils.Prompt("Enter your Public API Key")
-	
+
 	logx.NewLine()
 	flutter.HandleFlutterInstall(apiKey, projectID)
 }

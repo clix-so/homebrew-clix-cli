@@ -1,6 +1,7 @@
 package android
 
 import (
+	"fmt"
 	"github.com/clix-so/clix-cli/pkg/logx"
 )
 
@@ -110,49 +111,103 @@ func IndexOf(s, substr string) int {
 
 // RunDoctor runs all Android doctor checks.
 func RunDoctor(projectRoot string) {
-	logx.Log().WithSpinner().Title().Println(logx.TitleGradleRepoCheck)
-	if !CheckGradleRepository(projectRoot) {
+	logx.Separatorln()
+	logx.Log().Title().Println("Starting Clix SDK doctor for Android…")
+	logx.Separatorln()
+
+	// Suppress internal logs during checks to control output style
+	logx.Mute()
+
+	// 1/6 Gradle repository
+	fmt.Print("[1/6] Checking Gradle repositories... ")
+	repoOK := CheckGradleRepository(projectRoot)
+	if repoOK {
+		fmt.Println("OK")
+	} else {
+		fmt.Println("❌")
+		logx.Unmute()
 		logx.Log().Branch().Println(logx.FixGradleRepo)
-		logx.NewLine()
 		logx.Log().Indent(3).Code().Println(logx.CodeGradleRepo)
+		logx.Mute()
 	}
-	logx.NewLine()
 
-	logx.Log().WithSpinner().Title().Println(logx.TitleClixDependencyCheck)
-	if !CheckGradleDependency(projectRoot) {
+	// 2/6 Clix SDK dependency
+	fmt.Print("[2/6] Checking Clix SDK dependency... ")
+	depOK := CheckGradleDependency(projectRoot)
+	if depOK {
+		fmt.Println("OK")
+	} else {
+		fmt.Println("❌")
+		logx.Unmute()
 		logx.Log().Branch().Println(logx.FixClixDependency)
-		logx.NewLine()
 		logx.Log().Indent(3).Code().Println(logx.CodeClixDependency)
+		logx.Mute()
 	}
-	logx.NewLine()
 
-	logx.Log().WithSpinner().Title().Println(logx.TitleGmsPluginCheck)
-	if !CheckGradlePlugin(projectRoot) {
+	// 3/6 Google Services plugin
+	fmt.Print("[3/6] Checking Google Services plugin... ")
+	gmsOK := CheckGradlePlugin(projectRoot)
+	if gmsOK {
+		fmt.Println("OK")
+	} else {
+		fmt.Println("❌")
+		logx.Unmute()
 		logx.Log().Branch().Println(logx.FixGmsPlugin)
-		logx.NewLine()
 		logx.Log().Indent(3).Code().Println(logx.CodeGmsPlugin)
+		logx.Mute()
 	}
-	logx.NewLine()
 
-	logx.Log().WithSpinner().Title().Println(logx.TitleClixInitializationCheck)
-	ok, _ := CheckClixCoreImport(projectRoot)
-	if !ok {
+	// 4/6 Clix initialization
+	fmt.Print("[4/6] Checking Clix SDK initialization... ")
+	initOK, _ := CheckClixCoreImport(projectRoot)
+	if initOK {
+		fmt.Println("OK")
+	} else {
+		fmt.Println()
+		logx.Unmute()
 		logx.Log().Branch().Println(logx.FixClixInitialization)
 		logx.Log().Indent(3).Code().Println(logx.ClixInitializationLink)
+		logx.Mute()
 	}
-	logx.NewLine()
 
-	logx.Log().WithSpinner().Title().Println(logx.TitlePermissionCheck)
-	if !CheckAndroidMainActivityPermissions(projectRoot) {
+	// 5/6 Permission request in MainActivity
+	fmt.Print("[5/6] Checking permission request implementation... ")
+	permOK := CheckAndroidMainActivityPermissions(projectRoot)
+	if permOK {
+		fmt.Println("OK")
+	} else {
+		fmt.Println()
+		logx.Unmute()
 		logx.Log().Branch().Println(logx.FixPermissionRequest)
 		logx.Log().Indent(3).Code().Println(logx.PermissionRequestLink)
+		logx.Mute()
 	}
-	logx.NewLine()
 
-	logx.Log().WithSpinner().Title().Println(logx.TitleGoogleServicesJsonCheck)
-	if !CheckGoogleServicesJSON(projectRoot) {
+	// 6/6 google-services.json
+	fmt.Print("[6/6] Checking google-services.json... ")
+	gsOK := CheckGoogleServicesJSON(projectRoot)
+	if gsOK {
+		fmt.Println("OK")
+	} else {
+		fmt.Println()
+		logx.Unmute()
 		logx.Log().Branch().Println(logx.FixGoogleServicesJson)
 		logx.Log().Indent(3).Code().Println(logx.GoogleServicesJsonLink)
+		logx.Mute()
 	}
-	logx.NewLine()
+
+	// Restore logging
+	logx.Unmute()
+
+	// Summary
+	logx.Separatorln()
+	if repoOK && depOK && gmsOK && initOK && permOK && gsOK {
+		fmt.Println("🎉 Your Android project is properly configured for Clix SDK!")
+		fmt.Println("  └ Push notifications should be working correctly.")
+	} else {
+		fmt.Println("⚠️ Some issues were found with your Clix SDK integration.")
+		fmt.Println("  └ Please fix the issues mentioned above.")
+		fmt.Println("  └ Run 'clix-cli install --android' to fix most issues automatically.")
+	}
+	logx.Separatorln()
 }

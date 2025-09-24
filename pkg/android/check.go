@@ -1,9 +1,11 @@
 package android
 
 import (
+	"io/fs"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/clix-so/clix-cli/pkg/logx"
@@ -25,10 +27,22 @@ func CheckGradleRepository(projectRoot string) bool {
 			continue
 		}
 
-		content := string(data)
-		if Contains(content, "repositories") && Contains(content, "mavenCentral()") {
+		content := stripGradleComments(string(data))
+		if hasMavenCentral(content) {
 			found = true
 			break
+		}
+	}
+
+	// As a fallback, scan application module's build.gradle(.kts) in case repositories are declared there
+	if !found {
+		appBuildGradle := findApplicationModuleBuildGradle(projectRoot)
+		if appBuildGradle != "" {
+			if b, err := ioutil.ReadFile(appBuildGradle); err == nil {
+				if hasMavenCentral(stripGradleComments(string(b))) {
+					found = true
+				}
+			}
 		}
 	}
 
@@ -45,12 +59,16 @@ func CheckGradleRepository(projectRoot string) bool {
 func CheckGradleDependency(projectRoot string) bool {
 	appBuildGradleFilePath := GetAppBuildGradlePath(projectRoot)
 
+	// Fallback: try to locate an Android application module if app module isn't found
+	if appBuildGradleFilePath == "" {
+		appBuildGradleFilePath = findApplicationModuleBuildGradle(projectRoot)
+	}
+
 	if appBuildGradleFilePath == "" {
 		logx.Log().Failure().Println(logx.MsgAppBuildGradleNotFound)
 		return false
 	}
 
-	found := false
 	data, err := ioutil.ReadFile(appBuildGradleFilePath)
 	if err != nil {
 		logx.Log().Failure().Println(logx.MsgAppBuildGradleReadFail)
@@ -58,13 +76,9 @@ func CheckGradleDependency(projectRoot string) bool {
 	}
 
 	content := string(data)
-	if Contains(content, "implementation(\"so.clix:clix-android-sdk:") {
-		found = true
-	} else if Contains(content, "implementation(libs.clix.android.sdk)") {
-		found = true
-	}
+	noComments := stripGradleComments(content)
 
-	if found {
+	if containsClixDependency(noComments) || containsClixVersionCatalogAlias(noComments) {
 		logx.Log().Success().Println(logx.MsgClixDependencySuccess)
 		return true
 	}
@@ -73,38 +87,162 @@ func CheckGradleDependency(projectRoot string) bool {
 	return false
 }
 
+// stripGradleComments removes // and /* */ comments in Groovy/KTS files
+func stripGradleComments(s string) string {
+	// Remove block comments first
+	reBlock := regexp.MustCompile(`(?s)/\*.*?\*/`)
+	s = reBlock.ReplaceAllString(s, "")
+	// Remove line comments
+	reLine := regexp.MustCompile(`(?m)^\s*//.*$`)
+	s = reLine.ReplaceAllString(s, "")
+	return s
+}
+
+// containsClixDependency matches various Gradle notations for the dependency, with or without version
+func containsClixDependency(s string) bool {
+	// e.g., implementation("so.clix:clix-android-sdk"), api('so.clix:clix-android-sdk:1.2.3')
+	reDirect := regexp.MustCompile(`(?m)^\s*(implementation|api|compileOnly|runtimeOnly|debugImplementation|releaseImplementation)\s*\(\s*['"]so\.clix:clix-android-sdk(?:[:][^'"\)]+)?['"]\s*\)`)
+	// e.g., add("implementation", "so.clix:clix-android-sdk")
+	reAdd := regexp.MustCompile(`(?m)^\s*add\s*\(\s*['"](implementation|api|compileOnly|runtimeOnly|debugImplementation|releaseImplementation)['"]\s*,\s*['"]so\.clix:clix-android-sdk(?:[:][^'"\)]+)?['"]\s*\)`)
+
+	if reDirect.MatchString(s) || reAdd.MatchString(s) {
+		return true
+	}
+	return false
+}
+
+// containsClixVersionCatalogAlias detects version catalog aliases like libs.clix.android.sdk
+func containsClixVersionCatalogAlias(s string) bool {
+	reLibs := regexp.MustCompile(`(?m)^\s*(implementation|api|debugImplementation|releaseImplementation)\s*\(\s*libs\.[A-Za-z0-9_.-]*clix[A-Za-z0-9_.-]*\s*\)`)
+	return reLibs.MatchString(s)
+}
+
+// findApplicationModuleBuildGradle walks the project to find a module using the Android application plugin
+func findApplicationModuleBuildGradle(root string) string {
+	var result string
+	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if d.IsDir() {
+			name := d.Name()
+			if name == "build" || name == ".git" || name == ".gradle" || name == "gradle" || name == "node_modules" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if strings.HasSuffix(path, "build.gradle") || strings.HasSuffix(path, "build.gradle.kts") {
+			b, err := os.ReadFile(path)
+			if err != nil {
+				return nil
+			}
+			txt := string(b)
+			// Heuristics: presence of com.android.application plugin
+			if strings.Contains(txt, "com.android.application") {
+				result = path
+				return fs.SkipAll
+			}
+		}
+		return nil
+	})
+	return result
+}
+
 // CheckGradlePlugin checks if com.google.gms:google-services is present in app/build.gradle(.kts)
 func CheckGradlePlugin(projectRoot string) bool {
-	gradleFiles := []string{
-		filepath.Join(projectRoot, "app", "build.gradle"),
-		filepath.Join(projectRoot, "app", "build.gradle.kts"),
+	// Prefer application module
+	moduleGradle := GetAppBuildGradlePath(projectRoot)
+	if moduleGradle == "" {
+		moduleGradle = findApplicationModuleBuildGradle(projectRoot)
 	}
 
-	found := false
-	for _, file := range gradleFiles {
-		data, err := ioutil.ReadFile(file)
-		if err != nil {
-			continue
-		}
-
-		content := string(data)
-		if Contains(content, "alias(libs.plugins.gms") {
-			found = true
-			break
-		}
-		if Contains(content, "id(\"com.google.gms.google-services\")") {
-			found = true
-			break
+	// Check in the application module first
+	if moduleGradle != "" {
+		if b, err := ioutil.ReadFile(moduleGradle); err == nil {
+			c := stripGradleComments(string(b))
+			if containsGoogleServicesPlugin(c) {
+				logx.Log().Success().Println(logx.MsgGmsPluginFound)
+				return true
+			}
 		}
 	}
 
-	if found {
-		logx.Log().Success().Println(logx.MsgGmsPluginFound)
-		return true
+	// Fallback: some projects apply plugin from root to subprojects
+	rootGradles := []string{
+		filepath.Join(projectRoot, "build.gradle"),
+		filepath.Join(projectRoot, "build.gradle.kts"),
+	}
+	for _, f := range rootGradles {
+		if b, err := ioutil.ReadFile(f); err == nil {
+			c := stripGradleComments(string(b))
+			if containsGoogleServicesPluginInSubprojects(c) {
+				logx.Log().Success().Println(logx.MsgGmsPluginFound)
+				return true
+			}
+		}
 	}
 
 	logx.Log().Failure().Println(logx.MsgGmsPluginNotFound)
 	return false
+}
+
+// hasMavenCentral detects mavenCentral() or maven { url "https://repo.maven.apache.org/maven2" } within any repositories block
+func hasMavenCentral(s string) bool {
+	// repositories { ... mavenCentral() ... }
+	reRepoBlock := regexp.MustCompile(`(?s)repositories\s*\{.*?\}`)
+	blocks := reRepoBlock.FindAllString(s, -1)
+	for _, b := range blocks {
+		if strings.Contains(b, "mavenCentral()") {
+			return true
+		}
+		// maven { url "https://repo.maven.apache.org/maven2" } or repo1
+		reMavenUrl := regexp.MustCompile(`maven\s*\{[^}]*url[^\n\r\"]*[\"']https?://repo(\.maven|\d+)\.apache\.org/maven2[\"'][^}]*\}`)
+		if reMavenUrl.MatchString(b) {
+			return true
+		}
+	}
+	// Also handle settings.gradle(.kts) dependencyResolutionManagement { repositories { ... } }
+	if strings.Contains(s, "dependencyResolutionManagement") && strings.Contains(s, "mavenCentral()") {
+		return true
+	}
+	if strings.Contains(s, "pluginManagement") && strings.Contains(s, "mavenCentral()") {
+		return true
+	}
+	return false
+}
+
+// containsGoogleServicesPlugin detects various ways to apply the Google Services plugin inside a module build.gradle(.kts)
+func containsGoogleServicesPlugin(s string) bool {
+	// plugins { id("com.google.gms.google-services") }
+	reId := regexp.MustCompile(`(?s)plugins\s*\{[^}]*id\s*\(\s*['"]com\.google\.gms\.google-services['"]\s*\)[^}]*\}`)
+	if reId.MatchString(s) {
+		return true
+	}
+	// Groovy: apply plugin: 'com.google.gms.google-services'
+	reApplyGroovy := regexp.MustCompile(`apply\s+plugin\s*:\s*['"]com\.google\.gms\.google-services['"]`)
+	if reApplyGroovy.MatchString(s) {
+		return true
+	}
+	// Kotlin DSL: apply(plugin = "com.google.gms.google-services")
+	reApplyKts := regexp.MustCompile(`apply\s*\(\s*plugin\s*=\s*['"]com\.google\.gms\.google-services['"]\s*\)`)
+	if reApplyKts.MatchString(s) {
+		return true
+	}
+	// Version catalog alias, broaden to common patterns containing gms/google/services
+	reAlias := regexp.MustCompile(`(?s)plugins\s*\{[^}]*alias\s*\(\s*libs\.plugins\.[A-Za-z0-9_.-]*(gms|google)[A-Za-z0-9_.-]*services[A-Za-z0-9_.-]*\s*\)[^}]*\}`)
+	return reAlias.MatchString(s)
+}
+
+// containsGoogleServicesPluginInSubprojects detects application from root project into subprojects
+func containsGoogleServicesPluginInSubprojects(s string) bool {
+	// subprojects { apply plugin: 'com.google.gms.google-services' }
+	re := regexp.MustCompile(`(?s)subprojects\s*\{[^}]*apply\s+plugin\s*:\s*['"]com\.google\.gms\.google-services['"][^}]*\}`)
+	if re.MatchString(s) {
+		return true
+	}
+	// allprojects { plugins { id("com.google.gms.google-services") } } uncommon but possible
+	re2 := regexp.MustCompile(`(?s)(subprojects|allprojects)\s*\{[^}]*plugins\s*\{[^}]*id\s*\(\s*['"]com\.google\.gms\.google-services['"]\s*\)[^}]*\}[^}]*\}`)
+	return re2.MatchString(s)
 }
 
 // CheckClixCoreImport checks if any Application class imports so.clix.core.Clix (Java or Kotlin).

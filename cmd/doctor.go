@@ -32,22 +32,22 @@ for any issues found.`,
 			doctorIosFlag, doctorAndroidFlag, doctorExpoFlag, doctorFlutterFlag = utils.DetectAllPlatforms()
 
 			if !doctorIosFlag && !doctorAndroidFlag && !doctorExpoFlag && !doctorFlutterFlag {
-				fmt.Fprintln(os.Stderr, "❗ Could not detect platform. Please specify --ios, --android, --expo, or --flutter")
+				logx.Log().Warn().Println("Could not detect platform. Please specify --ios, --android, --expo, or --flutter")
 				os.Exit(1)
 			}
 		}
 
 		if doctorIosFlag {
-			fmt.Println("🔍 Checking Clix SDK integration for iOS...")
+			logx.Log().Title().Println("Checking Clix SDK integration for iOS…")
 			err := ios.RunDoctor()
 			if err != nil {
-				fmt.Fprintln(os.Stderr, "❌ Doctor check failed:", err)
+				logx.Log().Failure().Println(fmt.Sprintf("Doctor check failed: %v", err))
 				os.Exit(1)
 			}
 		}
 
 		if doctorAndroidFlag {
-			fmt.Println("🔍 Checking Clix SDK integration for Android...")
+			logx.Log().Title().Println("Checking Clix SDK integration for Android…")
 			logx.Separatorln()
 			android.RunDoctor("") // pass project root if needed, or ""
 		}
@@ -55,22 +55,22 @@ for any issues found.`,
 		if doctorExpoFlag {
 			err := expo.RunDoctor()
 			if err != nil {
-				fmt.Fprintln(os.Stderr, "❌ Doctor check failed:", err)
+				logx.Log().Failure().Println(fmt.Sprintf("Doctor check failed: %v", err))
 				os.Exit(1)
 			}
 		}
 
 		if doctorFlutterFlag {
-			fmt.Println("🔍 Checking Clix SDK integration for Flutter...")
+			logx.Log().Title().Println("Checking Clix SDK integration for Flutter…")
 			err := flutter.RunDoctor()
 			if err != nil {
-				fmt.Fprintln(os.Stderr, "❌ Doctor check failed:", err)
+				logx.Log().Failure().Println(fmt.Sprintf("Doctor check failed: %v", err))
 				os.Exit(1)
 			}
 		}
 
 		if !doctorIosFlag && !doctorAndroidFlag && !doctorExpoFlag && !doctorFlutterFlag {
-			fmt.Fprintln(os.Stderr, "❗ Please specify --ios, --android, --expo, or --flutter")
+			logx.Log().Warn().Println("Please specify --ios, --android, --expo, or --flutter")
 			os.Exit(1)
 		}
 	},

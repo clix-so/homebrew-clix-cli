@@ -17,7 +17,7 @@ func RunDoctor() error {
 		return fmt.Errorf("failed to get current working directory: %v", err)
 	}
 
-	fmt.Println("🏥 Clix Flutter Doctor")
+	logx.Log().Title().Println("Clix Flutter Doctor")
 	logx.Separatorln()
 
 	allChecks := []struct {
@@ -35,13 +35,13 @@ func RunDoctor() error {
 	}
 
 	allPassed := true
-	
+
 	for _, check := range allChecks {
 		passed, message := check.fn(projectRoot)
 		if passed {
-			logx.Log().Branch().Success().Println(fmt.Sprintf("%s ✅", check.name))
+			logx.Log().Branch().Success().Println(check.name)
 		} else {
-			logx.Log().Branch().Failure().Println(fmt.Sprintf("%s ❌", check.name))
+			logx.Log().Branch().Failure().Println(check.name)
 			if message != "" {
 				logx.Log().Indent(6).Code().Println(message)
 			}
@@ -50,11 +50,11 @@ func RunDoctor() error {
 	}
 
 	logx.NewLine()
-	
+
 	if allPassed {
-		fmt.Println("🎉 All checks passed! Your Flutter project is properly configured for Clix SDK.")
+		logx.Log().Success().Println("All checks passed! Your Flutter project is properly configured for Clix SDK.")
 	} else {
-		fmt.Println("❗ Some checks failed. Please fix the issues above and run 'clix doctor --flutter' again.")
+		logx.Log().Warn().Println("Some checks failed. Please fix the issues above and run 'clix doctor --flutter' again.")
 		return fmt.Errorf("flutter doctor checks failed")
 	}
 
@@ -155,7 +155,7 @@ func checkFirebaseOptions(projectRoot string) (bool, string) {
 	// Check if Firebase config files exist (they should be created by flutterfire configure)
 	androidConfigPath := filepath.Join(projectRoot, "android", "app", "google-services.json")
 	iosConfigPath := filepath.Join(projectRoot, "ios", "Runner", "GoogleService-Info.plist")
-	
+
 	var missingFiles []string
 	if _, err := os.Stat(androidConfigPath); err != nil {
 		missingFiles = append(missingFiles, "android/app/google-services.json")
@@ -163,14 +163,13 @@ func checkFirebaseOptions(projectRoot string) (bool, string) {
 	if _, err := os.Stat(iosConfigPath); err != nil {
 		missingFiles = append(missingFiles, "ios/Runner/GoogleService-Info.plist")
 	}
-	
+
 	if len(missingFiles) > 0 {
 		return false, fmt.Sprintf("missing Firebase config files: %v. Run: flutterfire configure", missingFiles)
 	}
 
 	return true, ""
 }
-
 
 // checkMainDartConfiguration verifies main.dart has proper Clix setup
 func checkMainDartConfiguration(projectRoot string) (bool, string) {

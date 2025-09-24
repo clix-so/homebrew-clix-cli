@@ -1,9 +1,10 @@
 package utils
 
 import (
-	"fmt"
 	"os"
 	"strings"
+
+	"github.com/clix-so/clix-cli/pkg/logx"
 )
 
 // DetectPlatform detects the platform based on the files in the current directory
@@ -115,16 +116,20 @@ func DetectAllPlatforms() (isIOS, isAndroid, isExpo, isFlutter bool) {
 	}
 
 	if isIOS {
-		fmt.Print("📦 iOS project detected\n\n")
+		logx.Log().Info().Println("iOS project detected")
+		logx.NewLine()
 	}
 	if isAndroid {
-		fmt.Print("📦 Android project detected\n\n")
+		logx.Log().Info().Println("Android project detected")
+		logx.NewLine()
 	}
 	if isExpo {
-		fmt.Print("📦 React Native Expo project detected\n\n")
+		logx.Log().Info().Println("React Native Expo project detected")
+		logx.NewLine()
 	}
 	if isFlutter {
-		fmt.Print("📦 Flutter project detected\n\n")
+		logx.Log().Info().Println("Flutter project detected")
+		logx.NewLine()
 	}
 
 	return

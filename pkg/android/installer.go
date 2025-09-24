@@ -39,7 +39,7 @@ func HandleAndroidInstall(apiKey, projectID string) {
 	}
 	logx.NewLine()
 
-	logx.Log().WithSpinner().Println(logx.TitleClixDependencyCheck)
+	logx.Log().WithSpinner().Title().Println(logx.TitleClixDependencyCheck)
 	depOK := CheckGradleDependency(projectRoot)
 	if !depOK {
 		if AddGradleDependency(projectRoot) {
@@ -53,7 +53,7 @@ func HandleAndroidInstall(apiKey, projectID string) {
 	}
 	logx.NewLine()
 
-	logx.Log().WithSpinner().Println(logx.TitleGmsPluginCheck)
+	logx.Log().WithSpinner().Title().Println(logx.TitleGmsPluginCheck)
 	pluginOK := CheckGradlePlugin(projectRoot)
 	if !pluginOK {
 		if AddGradlePlugin(projectRoot) {
@@ -67,7 +67,7 @@ func HandleAndroidInstall(apiKey, projectID string) {
 	}
 	logx.NewLine()
 
-	logx.Log().WithSpinner().Println(logx.TitleClixInitializationCheck)
+	logx.Log().WithSpinner().Title().Println(logx.TitleClixInitializationCheck)
 	appOK, code := CheckClixCoreImport(projectRoot)
 	originalOK := appOK
 	autoCreated := false
@@ -90,7 +90,7 @@ func HandleAndroidInstall(apiKey, projectID string) {
 	}
 	logx.NewLine()
 
-	logx.Log().WithSpinner().Println(logx.TitlePermissionCheck)
+	logx.Log().WithSpinner().Title().Println(logx.TitlePermissionCheck)
 	mainActivityOK := CheckAndroidMainActivityPermissions(projectRoot)
 	if !mainActivityOK {
 		logx.Log().Branch().Failure().Println(logx.MsgPermissionFixFailure)

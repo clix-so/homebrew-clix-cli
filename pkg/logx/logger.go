@@ -7,17 +7,31 @@ import (
 )
 
 const (
-	Bold      = "1"
-	Gray      = "90"
-	Reset 	  = "\033[0m"
+	Bold    = "1"
+	Gray    = "90"
+	Red     = "31"
+	Green   = "32"
+	Yellow  = "33"
+	Blue    = "34"
+	Magenta = "35"
+	Cyan    = "36"
+	Reset   = "\033[0m"
 )
 
-type Logger struct {	
-	indent int
-	prefix string
-	codes  []string
+type Logger struct {
+	indent     int
+	prefix     string
+	codes      []string
 	useSpinner bool
 }
+
+var muted bool
+
+// Mute disables all Logger output until Unmute is called.
+func Mute() { muted = true }
+
+// Unmute enables Logger output after Mute.
+func Unmute() { muted = false }
 
 func Log() *Logger {
 	return &Logger{}
@@ -55,11 +69,25 @@ func (l *Logger) Title() *Logger {
 
 func (l *Logger) Success() *Logger {
 	l.prefix = l.prefix + "✅ "
+	l.codes = append(l.codes, Green)
 	return l
 }
 
 func (l *Logger) Failure() *Logger {
 	l.prefix = l.prefix + "❌ "
+	l.codes = append(l.codes, Red)
+	return l
+}
+
+func (l *Logger) Info() *Logger {
+	l.prefix = l.prefix + "ℹ "
+	l.codes = append(l.codes, Blue)
+	return l
+}
+
+func (l *Logger) Warn() *Logger {
+	l.prefix = l.prefix + "⚠ "
+	l.codes = append(l.codes, Yellow)
 	return l
 }
 
@@ -69,6 +97,9 @@ func (l *Logger) WithSpinner() *Logger {
 }
 
 func (l *Logger) Println(msg string) {
+	if muted {
+		return
+	}
 	style := ansiCode(l.codes...)
 	indent := spaces(l.indent)
 
@@ -96,7 +127,7 @@ func (l *Logger) Println(msg string) {
 }
 
 func Separatorln() {
-	fmt.Println("─────────────────────────────────────────────────────")
+	fmt.Printf("%s%s%s\n", ansiCode(Gray), "─────────────────────────────────────────────────────", Reset)
 }
 
 func NewLine() {

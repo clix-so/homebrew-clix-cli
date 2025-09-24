@@ -18,7 +18,7 @@ func RunDoctor() error {
 		return fmt.Errorf("failed to get current working directory: %v", err)
 	}
 
-	fmt.Println("🔍 Running Clix Doctor for React Native Expo...")
+	logx.Log().Title().Println("Running Clix Doctor for React Native Expo…")
 	logx.Separatorln()
 
 	var issues []string
@@ -27,7 +27,7 @@ func RunDoctor() error {
 	if !CheckExpoProject(projectRoot) {
 		issues = append(issues, "Not an Expo project - missing app.json or expo dependency")
 	} else {
-		logx.Log().Success().Println("✅ Expo project detected")
+		logx.Log().Success().Println("Expo project detected")
 	}
 
 	// Check 2: Required dependencies
@@ -35,23 +35,23 @@ func RunDoctor() error {
 	if len(missingDeps) > 0 {
 		issues = append(issues, fmt.Sprintf("Missing dependencies: %s", strings.Join(missingDeps, ", ")))
 	} else {
-		logx.Log().Success().Println("✅ All required dependencies installed")
+		logx.Log().Success().Println("All required dependencies installed")
 	}
 
 	// Check 3: Firebase configuration files
 	hasAndroidConfig := CheckFirebaseConfig(projectRoot, "android")
 	hasIOSConfig := CheckFirebaseConfig(projectRoot, "ios")
-	
+
 	if !hasAndroidConfig {
 		issues = append(issues, "Missing google-services.json file")
 	} else {
-		logx.Log().Success().Println("✅ google-services.json found")
+		logx.Log().Success().Println("google-services.json found")
 	}
 
 	if !hasIOSConfig {
 		issues = append(issues, "Missing GoogleService-Info.plist file")
 	} else {
-		logx.Log().Success().Println("✅ GoogleService-Info.plist found")
+		logx.Log().Success().Println("GoogleService-Info.plist found")
 	}
 
 	// Check 4: app.json configuration
@@ -59,42 +59,42 @@ func RunDoctor() error {
 	if len(configIssues) > 0 {
 		issues = append(issues, configIssues...)
 	} else {
-		logx.Log().Success().Println("✅ app.json properly configured")
+		logx.Log().Success().Println("app.json properly configured")
 	}
 
 	// Check 5: Clix initialization file
 	if !CheckClixInitialization(projectRoot) {
 		issues = append(issues, "Clix initialization file not found")
 	} else {
-		logx.Log().Success().Println("✅ Clix initialization file found")
+		logx.Log().Success().Println("Clix initialization file found")
 	}
 
 	// Check 6: Clix integration in App component
 	if !CheckClixAppIntegration(projectRoot) {
 		issues = append(issues, "Clix not integrated in App component")
 	} else {
-		logx.Log().Success().Println("✅ Clix integrated in App component")
+		logx.Log().Success().Println("Clix integrated in App component")
 	}
 
 	// Check 6: Generated native code
 	if !CheckNativeCode(projectRoot) {
 		issues = append(issues, "Native code not generated - run 'npx expo prebuild --clean'")
 	} else {
-		logx.Log().Success().Println("✅ Native code generated")
+		logx.Log().Success().Println("Native code generated")
 	}
 
 	// Report results
 	logx.NewLine()
 	if len(issues) == 0 {
-		logx.Log().Success().Println("🎉 All checks passed! Your Expo project is ready for Clix SDK.")
-		fmt.Println("You can now run 'npx expo run:android' or 'npx expo run:ios' to test push notifications.")
+		logx.Log().Success().Println("All checks passed! Your Expo project is ready for Clix SDK.")
+		logx.Log().Info().Println("You can now run 'npx expo run:android' or 'npx expo run:ios' to test push notifications.")
 	} else {
-		fmt.Printf("❌ Found %d issue(s):\n", len(issues))
+		logx.Log().Failure().Println(fmt.Sprintf("Found %d issue(s):", len(issues)))
 		for i, issue := range issues {
-			fmt.Printf("  %d. %s\n", i+1, issue)
+			logx.Log().Indent(2).Println(fmt.Sprintf("%d. %s", i+1, issue))
 		}
 		logx.NewLine()
-		fmt.Println("Please fix the above issues and run 'clix doctor --expo' again.")
+		logx.Log().Warn().Println("Please fix the above issues and run 'clix doctor --expo' again.")
 	}
 
 	return nil
@@ -214,7 +214,7 @@ func CheckAppConfig(projectRoot string) []string {
 		if pluginArray, ok := plugin.([]any); ok && len(pluginArray) >= 2 {
 			if pluginStr, ok := pluginArray[0].(string); ok && pluginStr == "expo-build-properties" {
 				hasBuildPropertiesPlugin = true
-				
+
 				// Check the plugin configuration
 				if pluginConfig, ok := pluginArray[1].(map[string]any); ok {
 					// Check iOS useFrameworks
@@ -227,7 +227,7 @@ func CheckAppConfig(projectRoot string) []string {
 							}
 						}
 					}
-					
+
 					// Check Android extraMavenRepos
 					if androidConfig, exists := pluginConfig["android"]; exists {
 						if androidMap, ok := androidConfig.(map[string]any); ok {
@@ -287,7 +287,7 @@ func CheckAppConfig(projectRoot string) []string {
 		if _, exists := config.Expo.IOS["bundleIdentifier"]; !exists {
 			issues = append(issues, "iOS bundle identifier not configured in app.json")
 		}
-		
+
 		// Check for iOS push notification settings
 		if entitlements, exists := config.Expo.IOS["entitlements"]; exists {
 			if entMap, ok := entitlements.(map[string]any); ok {
@@ -319,10 +319,10 @@ func CheckAppConfig(projectRoot string) []string {
 func CheckClixInitialization(projectRoot string) bool {
 	tsPath := filepath.Join(projectRoot, "clix-config.ts")
 	jsPath := filepath.Join(projectRoot, "clix-config.js")
-	
+
 	_, tsErr := os.Stat(tsPath)
 	_, jsErr := os.Stat(jsPath)
-	
+
 	return tsErr == nil || jsErr == nil
 }
 
@@ -330,18 +330,18 @@ func CheckClixInitialization(projectRoot string) bool {
 func CheckNativeCode(projectRoot string) bool {
 	androidPath := filepath.Join(projectRoot, "android")
 	iosPath := filepath.Join(projectRoot, "ios")
-	
+
 	androidExists := false
 	iosExists := false
-	
+
 	if info, err := os.Stat(androidPath); err == nil && info.IsDir() {
 		androidExists = true
 	}
-	
+
 	if info, err := os.Stat(iosPath); err == nil && info.IsDir() {
 		iosExists = true
 	}
-	
+
 	return androidExists && iosExists
 }
 
@@ -350,11 +350,11 @@ func CheckClixAppIntegration(projectRoot string) bool {
 	// Common App component file paths in Expo projects
 	appFiles := []string{
 		"App.tsx",
-		"App.js", 
+		"App.js",
 		"src/App.tsx",
 		"src/App.js",
-		"app/_layout.tsx",  // Expo Router
-		"app/_layout.js",   // Expo Router
+		"app/_layout.tsx", // Expo Router
+		"app/_layout.js",  // Expo Router
 		"src/app/_layout.tsx",
 		"src/app/_layout.js",
 	}
@@ -443,7 +443,7 @@ func parseReactNativeVersionForDoctor(versionStr string) (int, error) {
 	version = strings.TrimPrefix(version, "<=")
 	version = strings.TrimPrefix(version, ">")
 	version = strings.TrimPrefix(version, "<")
-	
+
 	// Split by dots to get major.minor
 	parts := strings.Split(version, ".")
 	if len(parts) < 2 {
@@ -478,7 +478,7 @@ func parseMMKVMajorVersion(versionStr string) (int, error) {
 	version = strings.TrimPrefix(version, "<=")
 	version = strings.TrimPrefix(version, ">")
 	version = strings.TrimPrefix(version, "<")
-	
+
 	// Split by dots to get major version
 	parts := strings.Split(version, ".")
 	if len(parts) < 1 {
@@ -486,7 +486,7 @@ func parseMMKVMajorVersion(versionStr string) (int, error) {
 	}
 
 	major := strings.TrimSpace(parts[0])
-	
+
 	// Parse major version
 	majorInt, err := strconv.Atoi(major)
 	if err != nil {

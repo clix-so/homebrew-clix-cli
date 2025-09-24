@@ -18,19 +18,19 @@ type AppConfig struct {
 }
 
 type ExpoConfig struct {
-	Name              string           `json:"name"`
-	Slug              string           `json:"slug"`
-	Version           string           `json:"version"`
-	Orientation       string           `json:"orientation"`
-	Icon              string           `json:"icon"`
-	UserInterfaceStyle string          `json:"userInterfaceStyle"`
-	Splash            map[string]any   `json:"splash"`
-	Updates           map[string]any   `json:"updates"`
+	Name                string         `json:"name"`
+	Slug                string         `json:"slug"`
+	Version             string         `json:"version"`
+	Orientation         string         `json:"orientation"`
+	Icon                string         `json:"icon"`
+	UserInterfaceStyle  string         `json:"userInterfaceStyle"`
+	Splash              map[string]any `json:"splash"`
+	Updates             map[string]any `json:"updates"`
 	AssetBundlePatterns []string       `json:"assetBundlePatterns"`
-	IOS               map[string]any   `json:"ios"`
-	Android           map[string]any   `json:"android"`
-	Web               map[string]any   `json:"web"`
-	Plugins           []any            `json:"plugins"`
+	IOS                 map[string]any `json:"ios"`
+	Android             map[string]any `json:"android"`
+	Web                 map[string]any `json:"web"`
+	Plugins             []any          `json:"plugins"`
 }
 
 // HandleExpoInstall guides the user through the React Native Expo installation process
@@ -41,7 +41,7 @@ func HandleExpoInstall(apiKey, projectID string) {
 		return
 	}
 
-	fmt.Println("🚀 Installing Clix SDK for React Native Expo...")
+	logx.Log().Title().Println("Installing Clix SDK for React Native Expo…")
 	logx.Separatorln()
 
 	// Check if this is an Expo project
@@ -51,7 +51,7 @@ func HandleExpoInstall(apiKey, projectID string) {
 	}
 
 	// Step 1: Install expo-dev-client
-	logx.Log().WithSpinner().Title().Println("📦 Installing expo-dev-client...")
+	logx.Log().WithSpinner().Title().Println("Installing expo-dev-client…")
 	if err := utils.RunShellCommand("npx", "expo", "install", "expo-dev-client"); err != nil {
 		logx.Log().Branch().Failure().Println("Failed to install expo-dev-client")
 		logx.Log().Indent(6).Code().Println("npx expo install expo-dev-client")
@@ -61,7 +61,7 @@ func HandleExpoInstall(apiKey, projectID string) {
 	logx.NewLine()
 
 	// Step 2: Install Firebase modules
-	logx.Log().WithSpinner().Title().Println("🔥 Installing Firebase modules...")
+	logx.Log().WithSpinner().Title().Println("Installing Firebase modules…")
 	if err := utils.RunShellCommand("npx", "expo", "install", "@react-native-firebase/app", "@react-native-firebase/messaging", "expo-build-properties"); err != nil {
 		logx.Log().Branch().Failure().Println("Failed to install Firebase modules")
 		logx.Log().Indent(6).Code().Println("npx expo install @react-native-firebase/app @react-native-firebase/messaging expo-build-properties")
@@ -71,8 +71,8 @@ func HandleExpoInstall(apiKey, projectID string) {
 	logx.NewLine()
 
 	// Step 3: Install Clix dependencies
-	logx.Log().WithSpinner().Title().Println("📱 Installing Clix dependencies...")
-	
+	logx.Log().WithSpinner().Title().Println("Installing Clix dependencies…")
+
 	// Get appropriate MMKV version based on React Native version
 	mmkvVersion, err := getMMKVVersion(projectRoot)
 	if err != nil {
@@ -80,16 +80,16 @@ func HandleExpoInstall(apiKey, projectID string) {
 		logx.Log().Indent(6).Code().Println(err.Error())
 		return
 	}
-	
+
 	dependencies := []string{
 		"@clix-so/react-native-sdk",
-		"@notifee/react-native", 
+		"@notifee/react-native",
 		"react-native-device-info",
 		"react-native-get-random-values",
 		mmkvVersion,
 		"uuid",
 	}
-	
+
 	args := append([]string{"expo", "install"}, dependencies...)
 	if err := utils.RunShellCommand("npx", args...); err != nil {
 		logx.Log().Branch().Failure().Println("Failed to install Clix dependencies")
@@ -100,7 +100,7 @@ func HandleExpoInstall(apiKey, projectID string) {
 	logx.NewLine()
 
 	// Step 4: Check Firebase configuration files
-	logx.Log().WithSpinner().Title().Println("🔧 Checking Firebase configuration files...")
+	logx.Log().WithSpinner().Title().Println("Checking Firebase configuration files…")
 	hasAndroidConfig := CheckFirebaseConfig(projectRoot, "android")
 	hasIOSConfig := CheckFirebaseConfig(projectRoot, "ios")
 
@@ -119,7 +119,7 @@ func HandleExpoInstall(apiKey, projectID string) {
 	logx.NewLine()
 
 	// Step 5: Update app.json with Firebase plugin
-	logx.Log().WithSpinner().Title().Println("⚙️  Updating app.json configuration...")
+	logx.Log().WithSpinner().Title().Println("Updating app.json configuration…")
 	if err := UpdateAppConfig(projectRoot); err != nil {
 		logx.Log().Branch().Failure().Println("Failed to update app.json")
 		logx.Log().Indent(6).Code().Println(err.Error())
@@ -129,7 +129,7 @@ func HandleExpoInstall(apiKey, projectID string) {
 	logx.NewLine()
 
 	// Step 6: Create Clix initialization file
-	logx.Log().WithSpinner().Title().Println("🔨 Creating Clix initialization...")
+	logx.Log().WithSpinner().Title().Println("Creating Clix initialization…")
 	if err := CreateClixInitialization(projectRoot, apiKey, projectID); err != nil {
 		logx.Log().Branch().Failure().Println("Failed to create Clix initialization")
 		logx.Log().Indent(6).Code().Println(err.Error())
@@ -139,27 +139,27 @@ func HandleExpoInstall(apiKey, projectID string) {
 	logx.NewLine()
 
 	// Step 7: Integrate Clix initialization into App component
-	logx.Log().WithSpinner().Title().Println("🔗 Integrating Clix into App component...")
+	logx.Log().WithSpinner().Title().Println("Integrating Clix into App component…")
 	if err := IntegrateClixIntoApp(projectRoot); err != nil {
 		logx.Log().Branch().Failure().Println("Failed to integrate Clix into App component")
 		logx.Log().Indent(6).Code().Println(err.Error())
-		fmt.Println("⚠️  Please manually add the following to your main component:")
-		fmt.Println("   import { initializeClix } from './clix-config';")
-		fmt.Println("   // Call initializeClix() in your component's useEffect")
-		fmt.Println("   // This should be added to App.tsx, App.js, or app/_layout.tsx")
+		logx.Log().Warn().Println("Please manually add the following to your main component:")
+		logx.Log().Indent(3).Code().Println("import { initializeClix } from './clix-config';")
+		logx.Log().Indent(3).Println("// Call initializeClix() in your component's useEffect")
+		logx.Log().Indent(3).Println("// This should be added to App.tsx, App.js, or app/_layout.tsx")
 	} else {
 		logx.Log().Branch().Success().Println("Clix integration added to App component")
 	}
 	logx.NewLine()
 
 	// Step 8: Final instructions
-	fmt.Println("🎉 Clix SDK installation completed!")
-	fmt.Println("==================================================")
-	fmt.Println("Next steps:")
-	fmt.Println("1. Run 'npx expo prebuild --clean' to generate native code")
-	fmt.Println("2. Run 'npx expo run:android' or 'npx expo run:ios' to test")
-	fmt.Println("3. Run 'clix doctor --expo' to verify your setup")
-	fmt.Println("==================================================")
+	logx.Log().Success().Println("Clix SDK installation completed!")
+	logx.Separatorln()
+	logx.Log().Title().Println("Next steps")
+	logx.Log().Indent(2).Println("1. Run 'npx expo prebuild --clean' to generate native code")
+	logx.Log().Indent(2).Println("2. Run 'npx expo run:android' or 'npx expo run:ios' to test")
+	logx.Log().Indent(2).Println("3. Run 'clix doctor --expo' to verify your setup")
+	logx.Separatorln()
 }
 
 // CheckExpoProject checks if the current directory is an Expo project
@@ -198,7 +198,7 @@ func CheckFirebaseConfig(projectRoot, platform string) bool {
 // UpdateAppConfig updates the app.json file with Firebase plugin configuration
 func UpdateAppConfig(projectRoot string) error {
 	appJSONPath := filepath.Join(projectRoot, "app.json")
-	
+
 	data, err := os.ReadFile(appJSONPath)
 	if err != nil {
 		return fmt.Errorf("failed to read app.json: %v", err)
@@ -252,7 +252,7 @@ func UpdateAppConfig(projectRoot string) error {
 
 	// Handle expo-build-properties plugin
 	notifeeRepo := "../../node_modules/@notifee/react-native/android/libs"
-	
+
 	if buildPropertiesPluginIndex == -1 {
 		// Plugin doesn't exist, add complete configuration
 		buildPropertiesPlugin := []any{
@@ -270,7 +270,7 @@ func UpdateAppConfig(projectRoot string) error {
 	} else {
 		// Plugin exists, ensure it has the correct configuration
 		plugin := config.Expo.Plugins[buildPropertiesPluginIndex]
-		
+
 		// Handle string plugin format - convert to array format
 		if pluginStr, ok := plugin.(string); ok && pluginStr == "expo-build-properties" {
 			config.Expo.Plugins[buildPropertiesPluginIndex] = []any{
@@ -298,60 +298,60 @@ func UpdateAppConfig(projectRoot string) error {
 				pluginConfig = make(map[string]any)
 				pluginArray = append(pluginArray, pluginConfig)
 			}
-				// Ensure iOS configuration
-				if iosConfig, exists := pluginConfig["ios"]; exists {
-					if iosMap, ok := iosConfig.(map[string]any); ok {
-						iosMap["useFrameworks"] = "static"
-					}
-				} else {
-					pluginConfig["ios"] = map[string]any{
-						"useFrameworks": "static",
-					}
+			// Ensure iOS configuration
+			if iosConfig, exists := pluginConfig["ios"]; exists {
+				if iosMap, ok := iosConfig.(map[string]any); ok {
+					iosMap["useFrameworks"] = "static"
 				}
+			} else {
+				pluginConfig["ios"] = map[string]any{
+					"useFrameworks": "static",
+				}
+			}
 
-				// Ensure Android configuration
-				if androidConfig, exists := pluginConfig["android"]; exists {
-					if androidMap, ok := androidConfig.(map[string]any); ok {
-						// Handle extraMavenRepos
-						if existingRepos, exists := androidMap["extraMavenRepos"]; exists {
-							// Check if notifee repo already exists
-							hasNotifeeRepo := false
-							if repoArray, ok := existingRepos.([]any); ok {
-								for _, repo := range repoArray {
-									if repoStr, ok := repo.(string); ok && repoStr == notifeeRepo {
-										hasNotifeeRepo = true
-										break
-									}
-								}
-								if !hasNotifeeRepo {
-									androidMap["extraMavenRepos"] = append(repoArray, notifeeRepo)
-								}
-							} else if repoSlice, ok := existingRepos.([]string); ok {
-								for _, repo := range repoSlice {
-									if repo == notifeeRepo {
-										hasNotifeeRepo = true
-										break
-									}
-								}
-								if !hasNotifeeRepo {
-									newRepos := make([]any, len(repoSlice)+1)
-									for j, repo := range repoSlice {
-										newRepos[j] = repo
-									}
-									newRepos[len(repoSlice)] = notifeeRepo
-									androidMap["extraMavenRepos"] = newRepos
+			// Ensure Android configuration
+			if androidConfig, exists := pluginConfig["android"]; exists {
+				if androidMap, ok := androidConfig.(map[string]any); ok {
+					// Handle extraMavenRepos
+					if existingRepos, exists := androidMap["extraMavenRepos"]; exists {
+						// Check if notifee repo already exists
+						hasNotifeeRepo := false
+						if repoArray, ok := existingRepos.([]any); ok {
+							for _, repo := range repoArray {
+								if repoStr, ok := repo.(string); ok && repoStr == notifeeRepo {
+									hasNotifeeRepo = true
+									break
 								}
 							}
-						} else {
-							androidMap["extraMavenRepos"] = []string{notifeeRepo}
+							if !hasNotifeeRepo {
+								androidMap["extraMavenRepos"] = append(repoArray, notifeeRepo)
+							}
+						} else if repoSlice, ok := existingRepos.([]string); ok {
+							for _, repo := range repoSlice {
+								if repo == notifeeRepo {
+									hasNotifeeRepo = true
+									break
+								}
+							}
+							if !hasNotifeeRepo {
+								newRepos := make([]any, len(repoSlice)+1)
+								for j, repo := range repoSlice {
+									newRepos[j] = repo
+								}
+								newRepos[len(repoSlice)] = notifeeRepo
+								androidMap["extraMavenRepos"] = newRepos
+							}
 						}
-					}
-				} else {
-					pluginConfig["android"] = map[string]any{
-						"extraMavenRepos": []string{notifeeRepo},
+					} else {
+						androidMap["extraMavenRepos"] = []string{notifeeRepo}
 					}
 				}
-			
+			} else {
+				pluginConfig["android"] = map[string]any{
+					"extraMavenRepos": []string{notifeeRepo},
+				}
+			}
+
 			// Update the plugin array in the config
 			config.Expo.Plugins[buildPropertiesPluginIndex] = pluginArray
 		}
@@ -362,7 +362,7 @@ func UpdateAppConfig(projectRoot string) error {
 		config.Expo.Android = make(map[string]any)
 	}
 	config.Expo.Android["googleServicesFile"] = "./google-services.json"
-	
+
 	// Check for Android package name
 	if _, exists := config.Expo.Android["package"]; !exists {
 		fmt.Println("\n📱 Android package name is required for Firebase configuration.")
@@ -379,7 +379,7 @@ func UpdateAppConfig(projectRoot string) error {
 		config.Expo.IOS = make(map[string]any)
 	}
 	config.Expo.IOS["googleServicesFile"] = "./GoogleService-Info.plist"
-	
+
 	// Check for iOS bundle identifier
 	if _, exists := config.Expo.IOS["bundleIdentifier"]; !exists {
 		fmt.Println("\n🍎 iOS bundle identifier is required for Firebase configuration.")
@@ -390,7 +390,7 @@ func UpdateAppConfig(projectRoot string) error {
 			config.Expo.IOS["bundleIdentifier"] = iosBundleId
 		}
 	}
-	
+
 	// Add iOS push notification entitlements
 	if entitlements, exists := config.Expo.IOS["entitlements"]; exists {
 		if entMap, ok := entitlements.(map[string]any); ok {
@@ -487,8 +487,8 @@ func IntegrateClixIntoApp(projectRoot string) error {
 		"App.js",
 		"src/App.tsx",
 		"src/App.js",
-		"app/_layout.tsx",  // Expo Router
-		"app/_layout.js",   // Expo Router
+		"app/_layout.tsx", // Expo Router
+		"app/_layout.js",  // Expo Router
 		"src/app/_layout.tsx",
 		"src/app/_layout.js",
 	}
@@ -513,7 +513,7 @@ func IntegrateClixIntoApp(projectRoot string) error {
 	}
 
 	appContent := string(content)
-	
+
 	// Check if Clix is already imported
 	if strings.Contains(appContent, "initializeClix") {
 		return nil // Already integrated
@@ -537,14 +537,14 @@ func IntegrateClixIntoApp(projectRoot string) error {
 func addClixToAppComponent(content string) (string, error) {
 	lines := strings.Split(content, "\n")
 	var result []string
-	
+
 	clixImport := "import { initializeClix } from './clix-config';"
 	importAdded := false
 	initAdded := false
 
 	for i, line := range lines {
 		result = append(result, line)
-		
+
 		// Add Clix import after the last import
 		if !importAdded && strings.HasPrefix(strings.TrimSpace(line), "import ") {
 			// Check if this is the last import line
@@ -560,13 +560,13 @@ func addClixToAppComponent(content string) (string, error) {
 				}
 				break
 			}
-			
+
 			if isLastImport {
 				result = append(result, clixImport)
 				importAdded = true
 			}
 		}
-		
+
 		// Add useEffect import to React import if needed
 		if strings.Contains(line, "import") && strings.Contains(line, "react") && !strings.Contains(line, "useEffect") {
 			if strings.Contains(line, "{") && strings.Contains(line, "}") {
@@ -577,10 +577,10 @@ func addClixToAppComponent(content string) (string, error) {
 				result = append(result, "import { useEffect } from 'react';")
 			}
 		}
-		
+
 		// Add Clix initialization after component opening brace
 		if !initAdded && isComponentDeclaration(line) {
-			
+
 			// Find the opening brace
 			braceIndex := i
 			if !strings.Contains(line, "{") {
@@ -591,7 +591,7 @@ func addClixToAppComponent(content string) (string, error) {
 					}
 				}
 			}
-			
+
 			if braceIndex > i {
 				// We need to add to the next line after brace
 				continue
@@ -599,7 +599,7 @@ func addClixToAppComponent(content string) (string, error) {
 				// Brace is on the same line, add initialization
 				initCode := []string{
 					"",
-					"  // Initialize Clix SDK", 
+					"  // Initialize Clix SDK",
 					"  useEffect(() => {",
 					"    initializeClix();",
 					"  }, []);",
@@ -609,17 +609,17 @@ func addClixToAppComponent(content string) (string, error) {
 				initAdded = true
 			}
 		}
-		
+
 		// Handle case where opening brace is on next line
 		if !initAdded && strings.TrimSpace(line) == "{" && i > 0 {
 			prevLine := lines[i-1]
 			if isComponentDeclaration(prevLine) {
-				
+
 				initCode := []string{
 					"",
 					"  // Initialize Clix SDK",
 					"  useEffect(() => {",
-					"    initializeClix();", 
+					"    initializeClix();",
 					"  }, []);",
 					"",
 				}
@@ -628,41 +628,41 @@ func addClixToAppComponent(content string) (string, error) {
 			}
 		}
 	}
-	
+
 	// If import wasn't added, add at the beginning
 	if !importAdded {
 		result = append([]string{clixImport, ""}, result...)
 	}
-	
+
 	return strings.Join(result, "\n"), nil
 }
 
 // isComponentDeclaration checks if a line contains a React component declaration
 func isComponentDeclaration(line string) bool {
 	trimmed := strings.TrimSpace(line)
-	
+
 	// Check for various component patterns
 	patterns := []string{
 		"export default function",
 		"const App",
 		"function App",
-		"const RootLayout", 
+		"const RootLayout",
 		"function RootLayout",
 		"const Layout",
 		"function Layout",
 	}
-	
+
 	for _, pattern := range patterns {
 		if strings.Contains(trimmed, pattern) {
 			return true
 		}
 	}
-	
+
 	// Check for export default function with any name
 	if strings.HasPrefix(trimmed, "export default function ") {
 		return true
 	}
-	
+
 	return false
 }
 
@@ -724,7 +724,7 @@ func parseReactNativeVersion(versionStr string) (int, error) {
 	version = strings.TrimPrefix(version, "<=")
 	version = strings.TrimPrefix(version, ">")
 	version = strings.TrimPrefix(version, "<")
-	
+
 	// Split by dots to get major.minor
 	parts := strings.Split(version, ".")
 	if len(parts) < 2 {

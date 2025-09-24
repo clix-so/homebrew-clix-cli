@@ -16,7 +16,7 @@ func DisplayIOSInstructions(projectID string, apiKey string, verbose bool, dryRu
 
 	if usingSPM {
 		logx.NewLine()
-		logx.Log().WithSpinner().Title().Println("📦 Swift Package Manager (SPM) detected!")
+		logx.Log().WithSpinner().Title().Println("Swift Package Manager (SPM) detected!")
 		logx.Log().Branch().Println("📦 Please add the Clix SDK via SPM in Xcode:")
 		logx.Log().Indent(2).Println("1. Open your Xcode project.")
 		logx.Log().Indent(2).Println("2. Go to File > Add Package Dependencies")
@@ -28,15 +28,15 @@ func DisplayIOSInstructions(projectID string, apiKey string, verbose bool, dryRu
 		_, _ = fmt.Scanln()
 	} else if usingCocoaPods {
 		logx.NewLine()
-		logx.Log().WithSpinner().Title().Println("📦 CocoaPods detected!")
-		logx.Log().Branch().Println("🤖 Installing Clix SDK for iOS via CocoaPods")
+		logx.Log().WithSpinner().Title().Println("CocoaPods detected!")
+		logx.Log().Branch().Println("Installing Clix SDK for iOS via CocoaPods")
 		logx.NewLine()
 	} else {
 		// If neither is detected, ask the user
 		useSPM := promptForSPM()
 		if useSPM == "" || strings.ToLower(useSPM) == "y" {
 			logx.NewLine()
-			logx.Log().WithSpinner().Title().Println("📦 Please add the Clix SDK via SPM in Xcode:")
+			logx.Log().WithSpinner().Title().Println("Please add the Clix SDK via SPM in Xcode:")
 			logx.Log().Indent(2).Println("1. Open your Xcode project.")
 			logx.Log().Indent(2).Println("2. Go to File > Add Package Dependencies")
 			logx.Log().Indent(2).Println("3. Enter the URL below to the input on the right side")
@@ -49,16 +49,16 @@ func DisplayIOSInstructions(projectID string, apiKey string, verbose bool, dryRu
 			_, _ = fmt.Scanln()
 		} else {
 			logx.NewLine()
-			logx.Log().WithSpinner().Title().Println("🤖 Installing Clix SDK for iOS via CocoaPods")
+			logx.Log().WithSpinner().Title().Println("Installing Clix SDK for iOS via CocoaPods")
 			logx.NewLine()
 		}
 	}
 
 	logx.NewLine()
-	logx.Log().WithSpinner().Title().Println("📱 Integrating Clix SDK for iOS...")
+	logx.Log().WithSpinner().Title().Println("Integrating Clix SDK for iOS…")
 	logx.NewLine()
 
-	logx.Log().Branch().Title().Println("1️⃣  Notification Service Extension & App Group Setup")
+	logx.Log().Branch().Title().Println("Notification Service Extension & App Group Setup")
 	logx.Log().Indent(2).Println("1. Open your Xcode project.")
 	logx.Log().Indent(2).Println("2. Go to File > New > Target")
 	logx.Log().Indent(2).Println("3. Select 'Notification Service Extension' and click Next.")
@@ -71,22 +71,22 @@ func DisplayIOSInstructions(projectID string, apiKey string, verbose bool, dryRu
 	logx.Log().Indent(4).Println("   d. Search for and add 'Clix' framework")
 	logx.Log().Indent(4).Println("   e. Ensure 'Embed & Sign' is selected for the Clix framework")
 	logx.NewLine()
-	logx.Log().Println("Press Enter after you have created the NotificationServiceExtension...")
+	logx.Log().Println("Press Enter after you have created the NotificationServiceExtension…")
 	_, _ = fmt.Scanln()
 
 	logx.NewLine()
-	logx.Log().WithSpinner().Title().Println("2️⃣  Configuring App Groups and NotificationServiceExtension")
+	logx.Log().WithSpinner().Title().Println("Configuring App Groups and NotificationServiceExtension")
 	logx.NewLine()
-	logx.Log().Branch().Println("🤖 Automating Xcode project configuration...")
+	logx.Log().Branch().Println("Automating Xcode project configuration…")
 
 	// Try to configure the Xcode project automatically
 	err := ConfigureXcodeProject(projectID, verbose, dryRun)
 	if err != nil {
-		logx.Log().Branch().Failure().Println("⚠️ Automatic configuration failed: " + err.Error())
-		logx.Log().Branch().Println("⚙️ Switching to manual configuration...")
+		logx.Log().Branch().Failure().Println("Automatic configuration failed: " + err.Error())
+		logx.Log().Branch().Println("Switching to manual configuration…")
 		// Fall back to manual configuration
 		logx.NewLine()
-		logx.Log().Title().Println("2️⃣  App Group Configuration (Manual)")
+		logx.Log().Title().Println("App Group Configuration (Manual)")
 		logx.Log().Indent(2).Println("1. Select your main app target.")
 		logx.Log().Indent(2).Println("2. Go to the 'Signing & Capabilities' tab.")
 		logx.Log().Indent(2).Println("3. Click '+' to add a capability.")
@@ -94,17 +94,17 @@ func DisplayIOSInstructions(projectID string, apiKey string, verbose bool, dryRu
 		logx.Log().Indent(2).Println("5. Click '+' under App Groups to add a new group.")
 		logx.Log().Indent(2).Println("6. Enter 'group.clix." + projectID + "' as the group name.")
 		logx.NewLine()
-		logx.Log().Println("Press Enter after you have configured App Groups for the main app...")
+		logx.Log().Println("Press Enter after you have configured App Groups for the main app…")
 		_, _ = fmt.Scanln()
 
 		logx.NewLine()
-		logx.Log().Title().Println("3️⃣  NotificationServiceExtension Setup (Manual)")
+		logx.Log().Title().Println("NotificationServiceExtension Setup (Manual)")
 		logx.Log().Indent(2).Println("1. Select the NotificationServiceExtension target.")
 		logx.Log().Indent(2).Println("2. Go to the 'Signing & Capabilities' tab.")
 		logx.Log().Indent(2).Println("3. Add the App Groups capability.")
 		logx.Log().Indent(2).Println("4. Select the same group: 'group.clix." + projectID + "'.")
 		logx.NewLine()
-		logx.Log().Println("Press Enter after you have configured App Groups for the extension target...")
+		logx.Log().Println("Press Enter after you have configured App Groups for the extension target…")
 		_, _ = fmt.Scanln()
 
 		logx.NewLine()
@@ -116,12 +116,12 @@ func DisplayIOSInstructions(projectID string, apiKey string, verbose bool, dryRu
 		logx.Log().Indent(2).Println("5. Ensure 'Embed & Sign' is selected for the Clix framework.")
 		logx.Log().Indent(2).Println("6. Verify that Clix appears in the frameworks list for NotificationServiceExtension.")
 		logx.NewLine()
-		logx.Log().Println("Press Enter after you have configured everything for the extension target...")
+		logx.Log().Println("Press Enter after you have configured everything for the extension target…")
 		_, _ = fmt.Scanln()
 
 		// Add manual Background Modes steps
 		logx.NewLine()
-		logx.Log().Title().Println("5️⃣  Enable Background Modes on Main App (Manual)")
+		logx.Log().Title().Println("Enable Background Modes on Main App (Manual)")
 		logx.Log().Indent(2).Println("1. Select your MAIN app target.")
 		logx.Log().Indent(2).Println("2. Open the 'Signing & Capabilities' tab.")
 		logx.Log().Indent(2).Println("3. Click '+' and add 'Background Modes'.")
@@ -129,10 +129,10 @@ func DisplayIOSInstructions(projectID string, apiKey string, verbose bool, dryRu
 		logx.Log().Indent(4).Println("- Background fetch")
 		logx.Log().Indent(4).Println("- Remote notifications")
 		logx.NewLine()
-		logx.Log().Println("Press Enter after you have enabled Background Modes...")
+		logx.Log().Println("Press Enter after you have enabled Background Modes…")
 		_, _ = fmt.Scanln()
 	} else {
-		logx.Log().Branch().Success().Println("✅ Xcode project configured successfully!")
+		logx.Log().Branch().Success().Println("Xcode project configured successfully!")
 		logx.Log().Indent(2).Println("- App Groups capability added to main app target")
 		logx.Log().Indent(2).Println("- Background Modes ('Background fetch', 'Remote notifications') enabled on main app")
 		logx.Log().Indent(2).Println("- App Groups capability added to NotificationServiceExtension target (if present)")
@@ -144,9 +144,9 @@ func DisplayIOSInstructions(projectID string, apiKey string, verbose bool, dryRu
 	}
 
 	logx.NewLine()
-	logx.Log().Branch().Success().Println("🚀 Clix SDK iOS setup instructions complete!")
+	logx.Log().Branch().Success().Println("Clix SDK iOS setup instructions complete!")
 	logx.NewLine()
-	logx.Log().Indent(2).Code().Println("Run 'clix-cli doctor --ios' to verify your setup.")
+	logx.Log().Indent(2).Code().Println("Run 'clix doctor --ios' to verify your setup.")
 }
 
 // promptForSPM asks the user if they are using Swift Package Manager
@@ -438,17 +438,19 @@ func InstallClixIOS(projectID, apiKey string) error {
 		return fmt.Errorf("failed to write AppDelegate.swift: %w", err)
 	}
 
-	fmt.Println("✅ Clix SDK successfully integrated into AppDelegate.swift")
+	logx.Log().Success().Println("Clix SDK successfully integrated into AppDelegate.swift")
 
 	// Report any errors that occurred during installation
 	if len(installErrors) > 0 {
-		fmt.Println("\n⚠️ Some issues occurred during installation:")
+		logx.NewLine()
+		logx.Log().Warn().Println("Some issues occurred during installation:")
 		// Since Go slices are never nil when initialized, we don't need this check
 		// Just iterate over the slice, which will be empty if there are no errors
 		for _, err := range installErrors {
-			fmt.Println(" -", err)
+			logx.Log().Indent(2).Println("- " + err)
 		}
-		fmt.Println("\nPlease address these issues manually or contact support.")
+		logx.NewLine()
+		logx.Log().Info().Println("Please address these issues manually or contact support.")
 		return fmt.Errorf("installation completed with some issues")
 	}
 
