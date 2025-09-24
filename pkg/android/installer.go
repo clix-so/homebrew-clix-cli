@@ -42,14 +42,27 @@ func HandleAndroidInstall(apiKey, projectID string) {
 	logx.Log().WithSpinner().Println(logx.TitleClixDependencyCheck)
 	depOK := CheckGradleDependency(projectRoot)
 	if !depOK {
-		if AddGradleDependency(projectRoot) {
-			logx.Log().Branch().Success().Println(logx.MsgAutoFixSuccess)
-			depOK = true
-		} else {
-			logx.Log().Branch().Failure().Println(logx.MsgClixDependencyFixFailure)
+		// Prefer Version Catalog if available
+		if HasVersionCatalog(projectRoot) {
+			logx.Log().Branch().Println(logx.TitleVersionCatalogCheck)
+			if EnsureClixInVersionCatalog(projectRoot) && WireClixDependencyAlias(projectRoot) {
+				logx.Log().Branch().Success().Println(logx.MsgVersionCatalogClixAliasAdded)
+				depOK = true
+			} else {
+				logx.Log().Branch().Failure().Println(logx.MsgVersionCatalogClixAliasFailed)
+			}
 		}
-		logx.NewLine()
-		logx.Log().Indent(6).Code().Println(logx.CodeClixDependency)
+		// Fallback to direct dependency if still not ok
+		if !depOK {
+			if AddGradleDependency(projectRoot) {
+				logx.Log().Branch().Success().Println(logx.MsgAutoFixSuccess)
+				depOK = true
+			} else {
+				logx.Log().Branch().Failure().Println(logx.MsgClixDependencyFixFailure)
+				logx.NewLine()
+				logx.Log().Indent(6).Code().Println(logx.CodeClixDependency)
+			}
+		}
 	}
 	logx.NewLine()
 
@@ -148,6 +161,82 @@ func AddGradleDependency(projectRoot string) bool {
 			newContent := content[:insertAt] + "\n    implementation(\"so.clix:clix-android-sdk:1.1.2\")" + content[insertAt:]
 			err = ioutil.WriteFile(file, []byte(newContent), 0644)
 			return err == nil
+		}
+	}
+	return false
+}
+
+// EnsureClixInVersionCatalog adds clix coordinates and alias into libs.versions.toml if missing.
+// Adds under [versions], [libraries], and optionally [bundles] if needed.
+func EnsureClixInVersionCatalog(projectRoot string) bool {
+	catalog := GetVersionCatalogPath(projectRoot)
+	if catalog == "" {
+		return false
+	}
+	data, err := ioutil.ReadFile(catalog)
+	if err != nil {
+		return false
+	}
+	content := string(data)
+
+	desiredVersionKey := "clix"
+	desiredVersion := "1.1.2"
+	libAlias := "clix-android-sdk"
+
+	changed := false
+
+	if !Contains(content, "[versions]") {
+		content += "\n[versions]\n"
+		changed = true
+	}
+	if !Contains(content, desiredVersionKey+" = \"") {
+		content = strings.Replace(content, "[versions]", "[versions]\n"+desiredVersionKey+" = \""+desiredVersion+"\"", 1)
+		changed = true
+	}
+
+	if !Contains(content, "[libraries]") {
+		content += "\n[libraries]\n"
+		changed = true
+	}
+	libLine := libAlias + " = { module = \"so.clix:clix-android-sdk\", version.ref = \"" + desiredVersionKey + "\" }"
+	if !Contains(content, libAlias+" = ") {
+		content = strings.Replace(content, "[libraries]", "[libraries]\n"+libLine, 1)
+		changed = true
+	}
+
+	if !changed {
+		// Already present
+		logx.Log().Branch().Success().Println(logx.MsgVersionCatalogClixAliasExists)
+		return true
+	}
+
+	if err := ioutil.WriteFile(catalog, []byte(content), 0644); err != nil {
+		return false
+	}
+	return true
+}
+
+// WireClixDependencyAlias ensures app/build.gradle(.kts) uses implementation(libs.clix.android.sdk)
+func WireClixDependencyAlias(projectRoot string) bool {
+	gradleFiles := []string{
+		filepath.Join(projectRoot, "app", "build.gradle"),
+		filepath.Join(projectRoot, "app", "build.gradle.kts"),
+	}
+	for _, file := range gradleFiles {
+		data, err := ioutil.ReadFile(file)
+		if err != nil {
+			continue
+		}
+		content := string(data)
+		if Contains(content, "implementation(libs.clix.android.sdk)") || Contains(content, "implementation(\"so.clix:clix-android-sdk:") {
+			return true
+		}
+		if idx := IndexOf(content, "dependencies {"); idx != -1 {
+			insertAt := idx + len("dependencies {")
+			newContent := content[:insertAt] + "\n    implementation(libs.clix.android.sdk)" + content[insertAt:]
+			if err := ioutil.WriteFile(file, []byte(newContent), 0644); err == nil {
+				return true
+			}
 		}
 	}
 	return false
