@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/clix-so/clix-cli/pkg/logx"
+	"github.com/clix-so/clix-cli/pkg/versions"
 )
 
 // HandleAndroidInstall guides the user through the Android installation checklist.
@@ -158,7 +159,7 @@ func AddGradleDependency(projectRoot string) bool {
 		// Try to insert after 'dependencies {' or at end
 		if idx := IndexOf(content, "dependencies {"); idx != -1 {
 			insertAt := idx + len("dependencies {")
-			newContent := content[:insertAt] + "\n    implementation(\"so.clix:clix-android-sdk:1.1.2\")" + content[insertAt:]
+			newContent := content[:insertAt] + "\n    implementation(\"so.clix:clix-android-sdk:" + versions.AndroidClixSDKVersion + "\")" + content[insertAt:]
 			err = ioutil.WriteFile(file, []byte(newContent), 0644)
 			return err == nil
 		}
@@ -180,7 +181,7 @@ func EnsureClixInVersionCatalog(projectRoot string) bool {
 	content := string(data)
 
 	desiredVersionKey := "clix"
-	desiredVersion := "1.1.2"
+	desiredVersion := versions.AndroidClixSDKVersion
 	libAlias := "clix-android-sdk"
 
 	changed := false
@@ -260,7 +261,7 @@ func AddGradlePlugin(projectRoot string) bool {
 		// Try to insert after 'dependencies {' or at end
 		if idx := IndexOf(content, "plugins {"); idx != -1 {
 			insertAt := idx + len("plugins {")
-			newContent := content[:insertAt] + "\n    id(\"com.google.gms.google-services\") version \"4.4.2\"" + content[insertAt:]
+			newContent := content[:insertAt] + "\n    id(\"com.google.gms.google-services\") version \"" + versions.AndroidGmsPluginVersion + "\"" + content[insertAt:]
 			err = ioutil.WriteFile(file, []byte(newContent), 0644)
 			return err == nil
 		}

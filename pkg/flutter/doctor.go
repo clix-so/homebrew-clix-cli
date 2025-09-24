@@ -8,6 +8,7 @@ import (
 
 	"github.com/clix-so/clix-cli/pkg/logx"
 	"github.com/clix-so/clix-cli/pkg/utils"
+	"github.com/clix-so/clix-cli/pkg/versions"
 )
 
 // RunDoctor checks the Flutter project setup for Clix SDK
@@ -35,7 +36,7 @@ func RunDoctor() error {
 	}
 
 	allPassed := true
-	
+
 	for _, check := range allChecks {
 		passed, message := check.fn(projectRoot)
 		if passed {
@@ -50,7 +51,7 @@ func RunDoctor() error {
 	}
 
 	logx.NewLine()
-	
+
 	if allPassed {
 		fmt.Println("🎉 All checks passed! Your Flutter project is properly configured for Clix SDK.")
 	} else {
@@ -91,7 +92,7 @@ func checkClixDependency(projectRoot string) (bool, string) {
 
 	content := string(data)
 	if !strings.Contains(content, "clix_flutter:") {
-		return false, "Add 'clix_flutter: ^0.0.1' to dependencies in pubspec.yaml"
+		return false, "Add 'clix_flutter: " + versions.FlutterClixSDKVersion + "' to dependencies in pubspec.yaml"
 	}
 
 	return true, ""
@@ -107,7 +108,7 @@ func checkFirebaseCoreDependency(projectRoot string) (bool, string) {
 
 	content := string(data)
 	if !strings.Contains(content, "firebase_core:") {
-		return false, "Add 'firebase_core: ^3.6.0' to dependencies in pubspec.yaml"
+		return false, "Add 'firebase_core: " + versions.FlutterFirebaseCoreVersion + "' to dependencies in pubspec.yaml"
 	}
 
 	return true, ""
@@ -123,7 +124,7 @@ func checkFirebaseMessagingDependency(projectRoot string) (bool, string) {
 
 	content := string(data)
 	if !strings.Contains(content, "firebase_messaging:") {
-		return false, "Add 'firebase_messaging: ^15.1.3' to dependencies in pubspec.yaml"
+		return false, "Add 'firebase_messaging: " + versions.FlutterFirebaseMessagingVersion + "' to dependencies in pubspec.yaml"
 	}
 
 	return true, ""
@@ -155,7 +156,7 @@ func checkFirebaseOptions(projectRoot string) (bool, string) {
 	// Check if Firebase config files exist (they should be created by flutterfire configure)
 	androidConfigPath := filepath.Join(projectRoot, "android", "app", "google-services.json")
 	iosConfigPath := filepath.Join(projectRoot, "ios", "Runner", "GoogleService-Info.plist")
-	
+
 	var missingFiles []string
 	if _, err := os.Stat(androidConfigPath); err != nil {
 		missingFiles = append(missingFiles, "android/app/google-services.json")
@@ -163,14 +164,13 @@ func checkFirebaseOptions(projectRoot string) (bool, string) {
 	if _, err := os.Stat(iosConfigPath); err != nil {
 		missingFiles = append(missingFiles, "ios/Runner/GoogleService-Info.plist")
 	}
-	
+
 	if len(missingFiles) > 0 {
 		return false, fmt.Sprintf("missing Firebase config files: %v. Run: flutterfire configure", missingFiles)
 	}
 
 	return true, ""
 }
-
 
 // checkMainDartConfiguration verifies main.dart has proper Clix setup
 func checkMainDartConfiguration(projectRoot string) (bool, string) {

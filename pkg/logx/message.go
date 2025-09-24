@@ -1,5 +1,7 @@
 package logx
 
+import "github.com/clix-so/clix-cli/pkg/versions"
+
 const (
 	// Gradle Repository
 	TitleGradleRepoCheck    = "Checking Gradle repository configuration..."
@@ -17,9 +19,7 @@ const (
 	MsgClixDependencyFailure    = "Clix SDK dependency is missing."
 	FixClixDependency           = "To resolve this, add the following to app/build.gradle(.kts) or use Version Catalog entries:"
 	MsgClixDependencyFixFailure = "Automatic fix failed. Please add the following to app/build.gradle(.kts):"
-	CodeClixDependency          = `dependencies {
-	implementation("so.clix:clix-android-sdk:1.1.2")
-}`
+	CodeClixDependency          = "dependencies {\n\timplementation(\"so.clix:clix-android-sdk:" + versions.AndroidClixSDKVersion + "\")\n}"
 
 	// Version Catalog
 	TitleVersionCatalogCheck         = "Checking Version Catalog (libs.versions.toml)..."
@@ -35,9 +35,7 @@ const (
 	MsgGmsPluginNotFound   = "Google Services plugin is missing."
 	FixGmsPlugin           = "To resolve this, add the following to build.gradle(.kts):"
 	MsgGmsPluginFixFailure = "Automatic fix failed. Please add the following to app/build.gradle(.kts):"
-	CodeGmsPlugin          = `plugins {
-	id("com.google.gms.google-services") version "4.4.2"
-}`
+	CodeGmsPlugin          = "plugins {\n\tid(\"com.google.gms.google-services\") version \"" + versions.AndroidGmsPluginVersion + "\"\n}"
 
 	// Clix Application Import & Initialization
 	TitleClixInitializationCheck  = "Checking Clix SDK initialization..."
