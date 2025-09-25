@@ -119,6 +119,12 @@ func RunDoctor(projectRoot string) {
 	logx.NewLine()
 
 	logx.Log().WithSpinner().Title().Println(logx.TitleClixDependencyCheck)
+	// Inform about version catalog presence
+	if HasVersionCatalog(projectRoot) {
+		logx.Log().Branch().Success().Println(logx.MsgVersionCatalogFound)
+	} else {
+		logx.Log().Branch().Println(logx.MsgVersionCatalogMissing)
+	}
 	if !CheckGradleDependency(projectRoot) {
 		logx.Log().Branch().Println(logx.FixClixDependency)
 		logx.NewLine()

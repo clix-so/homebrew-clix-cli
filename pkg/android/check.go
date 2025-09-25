@@ -61,7 +61,18 @@ func CheckGradleDependency(projectRoot string) bool {
 	if Contains(content, "implementation(\"so.clix:clix-android-sdk:") {
 		found = true
 	} else if Contains(content, "implementation(libs.clix.android.sdk)") {
-		found = true
+		// If using version catalog, also confirm alias exists in libs.versions.toml when possible
+		if HasVersionCatalog(projectRoot) {
+			catalog := GetVersionCatalogPath(projectRoot)
+			if b, _ := os.ReadFile(catalog); b != nil {
+				cat := string(b)
+				if Contains(cat, "[libraries]") && Contains(cat, "clix-android-sdk = ") {
+					found = true
+				}
+			}
+		} else {
+			found = true
+		}
 	}
 
 	if found {

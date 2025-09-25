@@ -58,3 +58,16 @@ func GetSourceDirPath(projectRoot string) string {
 func GetAndroidManifestPath(projectRoot string) string {
 	return filepath.Join(projectRoot, "app", "src", "main", "AndroidManifest.xml")
 }
+
+// gradle/libs.versions.toml
+func GetVersionCatalogPath(projectRoot string) string {
+	p := filepath.Join(projectRoot, "gradle", "libs.versions.toml")
+	if _, err := os.Stat(p); err == nil {
+		return p
+	}
+	return ""
+}
+
+func HasVersionCatalog(projectRoot string) bool {
+	return GetVersionCatalogPath(projectRoot) != ""
+}
