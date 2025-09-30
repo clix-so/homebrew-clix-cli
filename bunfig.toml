@@ -1,0 +1,6 @@
+[install]
+# Use exact versions from package.json
+exact = true
+
+[install.scopes]
+# Configure any scoped package registries here if needed

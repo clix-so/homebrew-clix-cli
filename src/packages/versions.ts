@@ -1,0 +1,6 @@
+export const ANDROID_CLIX_SDK_VERSION = '1.1.2';
+export const ANDROID_GMS_PLUGIN_VERSION = '4.4.2';
+export const IOS_CLIX_SDK_VERSION = '1.1.2';
+export const FLUTTER_CLIX_SDK_VERSION = '^0.0.1';
+export const FLUTTER_FIREBASE_CORE_VERSION = '^3.6.0';
+export const FLUTTER_FIREBASE_MESSAGING_VERSION = '^15.1.3';

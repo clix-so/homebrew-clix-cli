@@ -1,0 +1,50 @@
+{
+  "name": "clix",
+  "version": "0.2.8",
+  "description": "A command-line tool for integrating and managing the Clix SDK in your mobile projects",
+  "type": "module",
+  "bin": {
+    "clix": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc && chmod +x dist/cli.js",
+    "dev": "bun run src/cli.tsx",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts,.tsx"
+  },
+  "keywords": [
+    "cli",
+    "clix",
+    "sdk",
+    "ios",
+    "android",
+    "react-native",
+    "expo",
+    "flutter",
+    "push-notifications"
+  ],
+  "author": "Clix",
+  "license": "MIT",
+  "dependencies": {
+    "@types/xml2js": "^0.4.14",
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "execa": "^9.5.2",
+    "fs-extra": "^11.2.0",
+    "glob": "^11.0.0",
+    "ink": "^5.0.1",
+    "ink-spinner": "^5.0.0",
+    "ink-text-input": "^6.0.0",
+    "ora": "^8.1.1",
+    "react": "^18.3.1",
+    "xml2js": "^0.6.2"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^22.10.5",
+    "@types/react": "^18.3.18",
+    "bun-types": "1.2.23",
+    "eslint": "^9.18.0",
+    "typescript": "^5.7.3"
+  }
+}
