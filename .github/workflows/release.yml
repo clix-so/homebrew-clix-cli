@@ -16,9 +16,17 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
+      - name: Generate GitHub App Token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.CLIX_APP_ID }}
+          private-key: ${{ secrets.CLIX_APP_PRIVATE_KEY }}
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2  # Fetch last 2 commits to compare
+          token: ${{ steps.generate-token.outputs.token }}
 
       - name: Check if version changed
         id: version_check
@@ -61,10 +69,10 @@ jobs:
         if: steps.version_check.outputs.VERSION_CHANGED == 'true' && steps.tag_check.outputs.TAG_EXISTS == 'false'
         run: |
           VERSION=${{ steps.version_check.outputs.CURRENT_VERSION }}
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions-clix-cli[bot]"
+          git config user.email "github-actions-clix-cli[bot]@users.noreply.github.com"
           git tag -a "v$VERSION" -m "Release v$VERSION"
-          git push origin "v$VERSION"
+          git push https://x-access-token:${{ steps.generate-token.outputs.token }}@github.com/clix-so/homebrew-clix-cli.git "v$VERSION"
 
       - name: Setup Node.js
         if: steps.version_check.outputs.VERSION_CHANGED == 'true' && steps.tag_check.outputs.TAG_EXISTS == 'false'
@@ -120,11 +128,11 @@ jobs:
         if: steps.version_check.outputs.VERSION_CHANGED == 'true' && steps.tag_check.outputs.TAG_EXISTS == 'false'
         run: |
           VERSION=${{ steps.version_check.outputs.CURRENT_VERSION }}
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions-clix-cli[bot]"
+          git config user.email "github-actions-clix-cli[bot]@users.noreply.github.com"
           git add clix.rb
           git commit -m "chore: update Homebrew formula for v$VERSION"
-          git push origin HEAD:main
+          git push https://x-access-token:${{ steps.generate-token.outputs.token }}@github.com/clix-so/homebrew-clix-cli.git HEAD:main
 
       - name: Create GitHub Release
         if: steps.version_check.outputs.VERSION_CHANGED == 'true' && steps.tag_check.outputs.TAG_EXISTS == 'false'

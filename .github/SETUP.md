@@ -30,11 +30,56 @@ This token is required to publish packages to npm.
    - Value: Paste your npm token
    - Click "Add secret"
 
-### 2. GITHUB_TOKEN (automatically provided)
+### 2. GitHub App Token (Required to Bypass Repository Rules)
 
-The `GITHUB_TOKEN` is automatically provided by GitHub Actions and doesn't need manual setup. It's used to:
-- Create GitHub releases
-- Commit and push the updated Homebrew formula
+Since the repository has branch protection rules that prevent direct pushes to `main`, we use a GitHub App to bypass these rules for the release workflow.
+
+#### Steps to create and configure GitHub App:
+
+1. **Create a GitHub App**
+   - Go to https://github.com/organizations/clix-so/settings/apps
+   - Click "New GitHub App"
+   - Fill in the details:
+     - **Name**: `github-actions-clix-cli`
+     - **Homepage URL**: `https://github.com/clix-so/homebrew-clix-cli`
+     - **Webhook**: Uncheck "Active"
+     - **Permissions**:
+       - Repository permissions:
+         - Contents: **Read and write**
+         - Metadata: **Read-only**
+     - **Where can this GitHub App be installed?**: Only on this account
+   - Click "Create GitHub App"
+
+2. **Generate Private Key**
+   - After creating the app, scroll to "Private keys" section
+   - Click "Generate a private key"
+   - Save the downloaded `.pem` file securely
+
+3. **Install the App**
+   - Go to the app settings page
+   - Click "Install App" in the left sidebar
+   - Select your organization (`clix-so`)
+   - Choose "Only select repositories"
+   - Select `homebrew-clix-cli` repository
+   - Click "Install"
+
+4. **Add Secrets to Repository**
+   - Go to https://github.com/clix-so/homebrew-clix-cli/settings/secrets/actions
+   - Add two secrets:
+     - **CLIX_APP_ID**: Copy the "App ID" from the app settings page
+     - **CLIX_APP_PRIVATE_KEY**: Copy the entire contents of the `.pem` file (including BEGIN/END lines)
+
+5. **Configure Repository Rules to Bypass the App**
+   - Go to https://github.com/clix-so/homebrew-clix-cli/settings/rules
+   - Edit the rule that blocks direct pushes to main
+   - Scroll to "Bypass list"
+   - Click "Add bypass" → "Apps" → Select `github-actions-clix-cli`
+   - Save the rule
+
+### 3. GITHUB_TOKEN (automatically provided)
+
+The `GITHUB_TOKEN` is automatically provided by GitHub Actions and is used for:
+- Creating GitHub releases
 
 ## Workflow Permissions
 
@@ -126,6 +171,15 @@ Error: `remote: Permission to clix-so/homebrew-clix-cli.git denied`
 2. Under "Workflow permissions", select:
    - ✅ Read and write permissions
 3. Click Save
+
+### Repository Rule Violations
+
+Error: `push declined due to repository rule violations`
+
+**Solution**:
+1. Ensure you've completed the GitHub App setup (see section 2 above)
+2. Verify the app is added to the bypass list in repository rules
+3. Check that `CLIX_APP_ID` and `CLIX_APP_PRIVATE_KEY` secrets are set correctly
 
 ### Formula Update Failed
 
