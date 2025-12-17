@@ -1,8 +1,8 @@
 class Clix < Formula
   desc "A CLI tool for integrating and managing the Clix SDK in your mobile projects"
   homepage "https://github.com/clix-so/homebrew-clix-cli"
-  url "https://registry.npmjs.org/@clix-so/clix-cli/-/clix-cli-1.0.0.tgz"
-  sha256 "6f41bee7a7f50acdee60d93b9918946f55339ae3ff338a112b72db0595740940"
+  url "https://registry.npmjs.org/@clix-so/clix-cli/-/clix-cli-1.0.3.tgz"
+  sha256 "b0d664743d927e1f89af458dd9da5b41779bc17a6cf4bf11e716de2d2b817c14"
   license "MIT"
 
   depends_on "node@18"
