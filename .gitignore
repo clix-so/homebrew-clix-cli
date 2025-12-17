@@ -41,5 +41,8 @@ go-test-cache/
 # GoReleaser dist
 /dist/
 
+# pkg binaries
+/binaries/
+
 # GitHub Actions
 .github/workflows/*.log

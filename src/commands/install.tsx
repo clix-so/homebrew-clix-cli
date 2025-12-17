@@ -9,8 +9,6 @@ interface InstallOptions {
 
 export async function installCommand(options: InstallOptions = {}): Promise<void> {
   return new Promise((resolve, reject) => {
-    let needsConfig = false;
-
     const { unmount } = render(
       <InstallUI
         promptUrl={options.promptUrl}
@@ -18,22 +16,19 @@ export async function installCommand(options: InstallOptions = {}): Promise<void
           unmount();
           resolve();
         }}
-        onNeedsConfig={() => {
-          needsConfig = true;
+        onNeedsConfig={async () => {
           unmount();
+          try {
+            // Run config command first
+            await configCommand();
+            // After config, retry install
+            await installCommand(options);
+            resolve();
+          } catch (error) {
+            reject(error);
+          }
         }}
       />
     );
-
-    // If config is needed, run config command first
-    if (needsConfig) {
-      configCommand()
-        .then(() => {
-          // After config, retry install
-          return installCommand(options);
-        })
-        .then(resolve)
-        .catch(reject);
-    }
   });
 }

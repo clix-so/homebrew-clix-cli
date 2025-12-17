@@ -9,11 +9,11 @@ interface StatusMessageProps {
   message: string;
 }
 
-const STATUS_ICONS = {
-  info: '🔍',
-  success: '✅',
-  warning: '⚠️',
-  error: '❌',
+const STATUS_PREFIXES = {
+  info: '→',
+  success: '✓',
+  warning: '!',
+  error: '✗',
   loading: null,
 };
 
@@ -22,23 +22,23 @@ const STATUS_COLORS = {
   success: 'green',
   warning: 'yellow',
   error: 'red',
-  loading: 'cyan',
+  loading: 'gray',
 } as const;
 
 export const StatusMessage: React.FC<StatusMessageProps> = ({ type, message }) => {
-  const icon = STATUS_ICONS[type];
+  const prefix = STATUS_PREFIXES[type];
   const color = STATUS_COLORS[type];
 
   return (
     <Box>
       {type === 'loading' ? (
-        <Text color={color}>
+        <Text dimColor>
           <Spinner type="dots" />
         </Text>
       ) : (
-        <Text>{icon}</Text>
+        <Text color={color} bold>{prefix}</Text>
       )}
-      <Text color={color}> {message}</Text>
+      <Text> {message}</Text>
     </Box>
   );
 };

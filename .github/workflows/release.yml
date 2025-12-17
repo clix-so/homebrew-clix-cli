@@ -2,8 +2,10 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*.*.*'
+    branches:
+      - main
+    paths:
+      - 'package.json'
   workflow_dispatch:
 
 permissions:
@@ -15,29 +17,123 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # Fetch last 2 commits to compare
+
+      - name: Check if version changed
+        id: version_check
+        run: |
+          # Get current version from package.json
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+
+          # Get previous version from the commit before
+          git checkout HEAD^1
+          PREVIOUS_VERSION=$(node -p "require('./package.json').version")
+          git checkout -
+
+          echo "Current version: $CURRENT_VERSION"
+          echo "Previous version: $PREVIOUS_VERSION"
+
+          # Check if version changed
+          if [ "$CURRENT_VERSION" != "$PREVIOUS_VERSION" ]; then
+            echo "VERSION_CHANGED=true" >> $GITHUB_OUTPUT
+            echo "Version changed from $PREVIOUS_VERSION to $CURRENT_VERSION"
+          else
+            echo "VERSION_CHANGED=false" >> $GITHUB_OUTPUT
+            echo "Version unchanged, skipping release"
+          fi
+
+      - name: Check if tag already exists
+        if: steps.version_check.outputs.VERSION_CHANGED == 'true'
+        id: tag_check
+        run: |
+          VERSION=${{ steps.version_check.outputs.CURRENT_VERSION }}
+          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            echo "TAG_EXISTS=true" >> $GITHUB_OUTPUT
+            echo "Tag v$VERSION already exists, skipping release"
+          else
+            echo "TAG_EXISTS=false" >> $GITHUB_OUTPUT
+            echo "Tag v$VERSION does not exist, proceeding with release"
+          fi
+
+      - name: Create and push tag
+        if: steps.version_check.outputs.VERSION_CHANGED == 'true' && steps.tag_check.outputs.TAG_EXISTS == 'false'
+        run: |
+          VERSION=${{ steps.version_check.outputs.CURRENT_VERSION }}
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$VERSION" -m "Release v$VERSION"
+          git push origin "v$VERSION"
 
       - name: Setup Node.js
+        if: steps.version_check.outputs.VERSION_CHANGED == 'true' && steps.tag_check.outputs.TAG_EXISTS == 'false'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
+        if: steps.version_check.outputs.VERSION_CHANGED == 'true' && steps.tag_check.outputs.TAG_EXISTS == 'false'
         run: npm ci
 
       - name: Build
+        if: steps.version_check.outputs.VERSION_CHANGED == 'true' && steps.tag_check.outputs.TAG_EXISTS == 'false'
         run: npm run build
 
       - name: Publish to npm
+        if: steps.version_check.outputs.VERSION_CHANGED == 'true' && steps.tag_check.outputs.TAG_EXISTS == 'false'
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+      - name: Download published tarball and calculate SHA256
+        if: steps.version_check.outputs.VERSION_CHANGED == 'true' && steps.tag_check.outputs.TAG_EXISTS == 'false'
+        id: sha256
+        run: |
+          # Wait a bit for npm to propagate the package
+          sleep 10
+
+          # Download the tarball
+          VERSION=${{ steps.version_check.outputs.CURRENT_VERSION }}
+          npm pack @clix-so/clix-cli@$VERSION
+
+          # Calculate SHA256
+          SHA256=$(shasum -a 256 clix-so-clix-cli-$VERSION.tgz | awk '{print $1}')
+          echo "SHA256=$SHA256" >> $GITHUB_OUTPUT
+          echo "Calculated SHA256: $SHA256"
+
+      - name: Update Homebrew Formula
+        if: steps.version_check.outputs.VERSION_CHANGED == 'true' && steps.tag_check.outputs.TAG_EXISTS == 'false'
+        run: |
+          VERSION=${{ steps.version_check.outputs.CURRENT_VERSION }}
+          SHA256=${{ steps.sha256.outputs.SHA256 }}
+
+          # Update clix.rb with new version and SHA256
+          sed -i "s|url \"https://registry.npmjs.org/@clix-so/clix-cli/-/clix-cli-.*\.tgz\"|url \"https://registry.npmjs.org/@clix-so/clix-cli/-/clix-cli-${VERSION}.tgz\"|g" clix.rb
+          sed -i "s|sha256 \".*\"|sha256 \"${SHA256}\"|g" clix.rb
+
+          # Show the updated file
+          cat clix.rb
+
+      - name: Commit and push Formula update
+        if: steps.version_check.outputs.VERSION_CHANGED == 'true' && steps.tag_check.outputs.TAG_EXISTS == 'false'
+        run: |
+          VERSION=${{ steps.version_check.outputs.CURRENT_VERSION }}
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add clix.rb
+          git commit -m "chore: update Homebrew formula for v$VERSION"
+          git push origin HEAD:main
+
       - name: Create GitHub Release
+        if: steps.version_check.outputs.VERSION_CHANGED == 'true' && steps.tag_check.outputs.TAG_EXISTS == 'false'
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: v${{ steps.version_check.outputs.CURRENT_VERSION }}
           generate_release_notes: true
           files: |
             dist/*
+            clix.rb
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

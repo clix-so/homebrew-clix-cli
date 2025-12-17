@@ -157,6 +157,32 @@ src/
 
 Pull requests and issues are welcome!
 
+### Getting Started
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed development guide.
+
+### Quick Start
+
+```bash
+# Install dependencies
+npm install
+
+# Build the project
+npm run build
+
+# Test locally
+npm link
+clix --help
+
+# Watch mode for development
+npm run dev
+```
+
+### Resources
+
+- [DEVELOPMENT.md](DEVELOPMENT.md) - Comprehensive development guide
+- [DEPLOYMENT.md](DEPLOYMENT.md) - Release and deployment instructions
+
 ## 📄 License
 
 MIT
@@ -166,6 +192,7 @@ MIT
 - [GitHub Repository](https://github.com/clix-so/homebrew-clix-cli)
 - [Issue Tracker](https://github.com/clix-so/homebrew-clix-cli/issues)
 - [Clix SDK Documentation](https://clix.so)
+- [LLMs.txt](llms.txt) - Detailed documentation for AI assistants
 
 ---
 

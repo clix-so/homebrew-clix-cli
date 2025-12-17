@@ -29,10 +29,13 @@ export const InstallUI: React.FC<InstallUIProps> = ({ promptUrl, onComplete, onN
   const [promptSize, setPromptSize] = useState<number>(0);
 
   useEffect(() => {
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
     const run = async () => {
       try {
         // Load configuration
         setPhase('loading_config');
+        await delay(800);
         const config = new ConfigManager();
         const cfg = await config.load();
 
@@ -43,6 +46,7 @@ export const InstallUI: React.FC<InstallUIProps> = ({ promptUrl, onComplete, onN
 
         // Check if tool is available
         setPhase('checking_tool');
+        await delay(600);
         const tool = getToolByName(cfg.selectedCLI);
         if (!tool) {
           setErrorMessage(`Configured tool '${cfg.selectedCLI}' not found`);
@@ -61,27 +65,32 @@ export const InstallUI: React.FC<InstallUIProps> = ({ promptUrl, onComplete, onN
         }
 
         setToolName(tool.displayName);
+        await delay(400);
 
         // Ensure MCP server is installed
         setPhase('checking_mcp');
+        await delay(800);
         const mcpInstaller = new MCPInstaller();
         const wasInstalled = await mcpInstaller.ensureServerInstalled(tool.name);
+        await delay(400);
 
         // Fetch installation prompt
         setPhase('fetching_prompt');
         const fetcher = new PromptFetcher();
         const prompt = await fetcher.fetch(promptUrl);
         setPromptSize(prompt.length);
+        await delay(600);
 
         // Execute installation
         setPhase('executing');
+        await delay(1000);
         const executor = new Executor(tool);
         await executor.executeInteractive(prompt);
 
         setPhase('complete');
         setTimeout(() => {
           onComplete();
-        }, 1000);
+        }, 1500);
       } catch (error) {
         setErrorMessage(error instanceof Error ? error.message : 'Unknown error');
         setPhase('error');
@@ -120,22 +129,15 @@ export const InstallUI: React.FC<InstallUIProps> = ({ promptUrl, onComplete, onN
 
       {phase === 'executing' && (
         <Box flexDirection="column">
-          <StatusMessage type="success" message={`Using ${toolName} for installation`} />
-          <StatusMessage type="success" message="MCP Server configured" />
-          <StatusMessage
-            type="success"
-            message={`Installation instructions loaded (${promptSize} bytes)`}
-          />
-          <Box marginTop={1} marginBottom={1}>
-            <Text bold color="cyan">
-              🚀 Starting AI-assisted installation...
-            </Text>
-          </Box>
-          <Text color="gray">{'━'.repeat(50)}</Text>
+          <StatusMessage type="success" message={`Using ${toolName}`} />
+          <StatusMessage type="success" message="MCP server ready" />
+          <StatusMessage type="success" message={`Prompt loaded (${Math.round(promptSize / 1024)}KB)`} />
           <Box marginTop={1}>
-            <Text color="yellow">
-              Note: The AI assistant is now taking over. Follow its instructions to complete the
-              installation.
+            <Text bold>Starting AI assistant...</Text>
+          </Box>
+          <Box marginTop={1}>
+            <Text dimColor>
+              The AI will guide you through the installation process.
             </Text>
           </Box>
         </Box>
@@ -143,12 +145,9 @@ export const InstallUI: React.FC<InstallUIProps> = ({ promptUrl, onComplete, onN
 
       {phase === 'complete' && (
         <Box flexDirection="column">
-          <StatusMessage type="success" message="Installation process completed!" />
+          <StatusMessage type="success" message="Installation complete" />
           <Box marginTop={1}>
-            <Text>The AI assistant has finished processing the installation instructions.</Text>
-          </Box>
-          <Box>
-            <Text>Please verify that the Clix Mobile SDK has been installed correctly.</Text>
+            <Text dimColor>Verify that the SDK was installed correctly.</Text>
           </Box>
         </Box>
       )}

@@ -1,4 +1,4 @@
-# Source files
+# Source files (keep compiled output only)
 src/
 *.ts
 *.tsx
@@ -15,7 +15,7 @@ tsup.config.ts
 .goreleaser.yaml
 Makefile
 
-# Go files
+# Go files (legacy, not needed anymore)
 *.go
 go.mod
 go.sum
@@ -27,13 +27,14 @@ pkg/
 examples/
 test-*
 
-# Build artifacts (Go)
+# Build artifacts
 clix-cli
 *.rb
+binaries/
 
-# Documentation
-README.md
-LICENSE
+# Development documentation (keep user-facing docs)
+DEPLOYMENT.md
+.github/
 
 # Misc
 .DS_Store

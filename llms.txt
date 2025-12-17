@@ -1,0 +1,556 @@
+# Clix CLI
+
+> AI-powered command-line tool for integrating and managing the Clix SDK in mobile projects
+
+## Overview
+
+Clix CLI is a modern command-line interface tool that uses AI assistants to automate the installation and configuration of the Clix Mobile SDK. It provides a beautiful, interactive terminal UI built with React and Ink, and supports multiple AI CLI tools including Claude, Gemini, GPT, and Aider.
+
+**Key Features:**
+- AI-powered SDK installation with guided workflows
+- Beautiful terminal UI with real-time feedback
+- Multi-platform support (iOS and Android)
+- Automatic MCP (Model Context Protocol) server configuration
+- Interactive tool selection and configuration
+
+## Installation
+
+### via npm (Recommended)
+```bash
+npm install -g @clix-so/clix-cli
+```
+
+### via Homebrew
+```bash
+brew tap clix-so/clix-cli
+brew install clix-so/clix-cli/clix
+```
+
+### via pnpm
+```bash
+pnpm add -g @clix-so/clix-cli
+```
+
+### via yarn
+```bash
+yarn global add @clix-so/clix-cli
+```
+
+## Prerequisites
+
+- **Node.js 18 or higher** is required
+- One of the supported AI CLI tools:
+  - [Claude CLI](https://claude.ai/cli) (Recommended)
+  - [Google Gemini CLI](https://ai.google.dev/gemini-api)
+  - [OpenAI GPT CLI](https://platform.openai.com/)
+  - [Aider](https://github.com/paul-gauthier/aider)
+
+## Commands
+
+### `clix` (root command)
+
+Shows the welcome banner and available commands.
+
+```bash
+clix
+```
+
+**Output:**
+- Welcome banner with ASCII art
+- List of available commands
+- Quick start instructions
+
+### `clix install`
+
+Installs the Clix SDK into your mobile project using AI assistance.
+
+```bash
+clix install [options]
+```
+
+**Options:**
+- `-p, --prompt-url <url>` - Custom URL for the installation prompt
+
+**Examples:**
+```bash
+# Standard installation
+clix install
+
+# Installation with custom prompt
+clix install --prompt-url https://example.com/custom-prompt.txt
+```
+
+**What it does:**
+1. Verifies AI CLI tool is configured (prompts to run `clix config` if not)
+2. Detects project type (iOS/Android)
+3. Fetches the latest installation prompt from Clix servers
+4. Sets up MCP server configuration automatically
+5. Launches your configured AI assistant with the installation context
+6. The AI guides you through the entire SDK integration process
+
+**Interactive Flow:**
+```
+┌─────────────────────────────────────────┐
+│  Clix SDK Installation                  │
+├─────────────────────────────────────────┤
+│  ⠋ Checking AI configuration...        │
+│  ✓ AI tool configured: claude           │
+│  ⠋ Fetching installation prompt...     │
+│  ✓ Prompt fetched successfully          │
+│  ⠋ Setting up MCP server...            │
+│  ✓ MCP server configured                │
+│  ⠋ Launching AI assistant...           │
+│  ✓ AI assistant started                 │
+└─────────────────────────────────────────┘
+```
+
+### `clix config`
+
+Configures which AI CLI tool to use for SDK installations.
+
+```bash
+clix config
+```
+
+**What it does:**
+1. Scans your system for available AI CLI tools
+2. Shows your current configuration (if any)
+3. Presents an interactive selection menu
+4. Saves your choice to `~/.clix/config.json`
+
+**Interactive Flow:**
+```
+┌─────────────────────────────────────────┐
+│  AI Tool Configuration                  │
+├─────────────────────────────────────────┤
+│  Available AI tools:                    │
+│                                         │
+│  > ● Claude CLI                         │
+│    ○ Aider                              │
+│    ○ Custom                             │
+│                                         │
+│  ↑/↓: Navigate  Enter: Select           │
+└─────────────────────────────────────────┘
+```
+
+**Detected Tools:**
+The CLI automatically detects:
+- **Claude CLI** - Checks for `claude` command
+- **Gemini CLI** - Checks for `gemini` command
+- **GPT CLI** - Checks for `gpt` command
+- **Aider** - Checks for `aider` command
+- **Custom** - Allows manual configuration
+
+**Configuration File:**
+Location: `~/.clix/config.json`
+```json
+{
+  "ai_tool": "claude"
+}
+```
+
+### `clix --help`
+
+Shows help information.
+
+```bash
+clix --help
+# or
+clix -h
+```
+
+### `clix --version`
+
+Shows the installed version.
+
+```bash
+clix --version
+# or
+clix -v
+```
+
+## Usage Scenarios
+
+### Scenario 1: First-time Setup
+
+```bash
+# Install globally
+npm install -g @clix-so/clix-cli
+
+# Configure AI tool (first time only)
+clix config
+# Select your preferred AI CLI tool from the menu
+
+# Install Clix SDK in your project
+cd /path/to/your/mobile/project
+clix install
+# Follow the AI assistant's guidance
+```
+
+### Scenario 2: iOS Project Integration
+
+```bash
+cd /path/to/ios/project
+clix install
+
+# The AI will:
+# 1. Detect it's an iOS project (Xcode project files)
+# 2. Guide you to add the SDK via CocoaPods or SPM
+# 3. Configure AppDelegate or SwiftUI App
+# 4. Set up push notification capabilities
+# 5. Add necessary entitlements
+```
+
+### Scenario 3: Android Project Integration
+
+```bash
+cd /path/to/android/project
+clix install
+
+# The AI will:
+# 1. Detect it's an Android project (gradle files)
+# 2. Add dependencies to build.gradle
+# 3. Configure Application class
+# 4. Set up Firebase Cloud Messaging
+# 5. Add necessary permissions to AndroidManifest.xml
+```
+
+### Scenario 4: Using Custom Installation Prompt
+
+```bash
+# For enterprise or custom SDK configurations
+clix install --prompt-url https://internal.company.com/clix-enterprise-prompt.txt
+
+# This allows organizations to:
+# - Customize installation steps
+# - Add internal documentation
+# - Include company-specific configurations
+```
+
+### Scenario 5: Switching AI Tools
+
+```bash
+# Change from Claude to Aider
+clix config
+# Select "Aider" from the menu
+
+# Verify the change
+clix install
+# Now uses Aider for AI assistance
+```
+
+## How It Works
+
+### Architecture
+
+```
+┌──────────────┐
+│   User       │
+└──────┬───────┘
+       │
+       ↓ runs command
+┌──────────────────────────────────────┐
+│   Clix CLI                           │
+│   ┌────────────────────────────────┐ │
+│   │  Command Router (meow)         │ │
+│   └─────────┬──────────────────────┘ │
+│             ↓                         │
+│   ┌────────────────────────────────┐ │
+│   │  UI Layer (Ink + React)        │ │
+│   │  - Banner, Header, Spinners    │ │
+│   │  - Interactive Menus           │ │
+│   └─────────┬──────────────────────┘ │
+│             ↓                         │
+│   ┌────────────────────────────────┐ │
+│   │  Core Logic                    │ │
+│   │  - Config Manager              │ │
+│   │  - AI Tool Detector            │ │
+│   │  - Prompt Fetcher              │ │
+│   │  - MCP Manager                 │ │
+│   │  - AI Executor                 │ │
+│   └─────────┬──────────────────────┘ │
+└─────────────┼────────────────────────┘
+              ↓
+     ┌────────────────┐
+     │  AI Assistant  │
+     │  (Claude, etc) │
+     └────────────────┘
+```
+
+### Installation Flow
+
+1. **Configuration Check**
+   - Reads `~/.clix/config.json`
+   - Verifies AI tool is configured
+   - Prompts user to run `clix config` if needed
+
+2. **Prompt Fetching**
+   - Fetches installation instructions from Clix servers
+   - Default URL: `https://docs.clix.so/prompts/install.txt`
+   - Can be overridden with `--prompt-url` flag
+
+3. **MCP Setup**
+   - Automatically configures MCP server for the AI tool
+   - Updates AI tool's config file (e.g., `~/.claude/claude_desktop_config.json`)
+   - Adds Clix MCP server endpoint
+
+4. **AI Execution**
+   - Spawns AI CLI process (e.g., `claude`)
+   - Passes installation prompt as context
+   - Streams output back to terminal
+   - AI interactively guides the user through installation
+
+### Configuration Files
+
+**User Config:** `~/.clix/config.json`
+```json
+{
+  "ai_tool": "claude"
+}
+```
+
+**MCP Config (Claude example):** `~/.claude/claude_desktop_config.json`
+```json
+{
+  "mcpServers": {
+    "clix": {
+      "url": "https://mcp.clix.so",
+      "apiKey": "auto-generated"
+    }
+  }
+}
+```
+
+## AI Tool Integration
+
+### Claude CLI
+
+**Detection:** Checks if `claude` command is available
+**Execution:** `claude` with prompt piped or as argument
+**MCP:** Auto-configures `~/.claude/claude_desktop_config.json`
+
+### Gemini CLI
+
+**Detection:** Checks if `gemini` command is available
+**Execution:** `gemini` with prompt as argument
+**MCP:** Configures Gemini-specific MCP settings
+
+### GPT CLI
+
+**Detection:** Checks if `gpt` command is available
+**Execution:** `gpt` with prompt as argument
+**MCP:** Configures GPT-specific MCP settings
+
+### Aider
+
+**Detection:** Checks if `aider` command is available
+**Execution:** `aider` with prompt file
+**MCP:** Configures Aider-specific MCP settings
+
+### Custom Tool
+
+**Detection:** User specifies command manually
+**Execution:** Runs custom command with prompt
+**MCP:** Manual configuration may be required
+
+## Common Issues and Solutions
+
+### Issue: "No AI tool configured"
+
+**Cause:** First time running `clix install` without configuration
+
+**Solution:**
+```bash
+clix config
+# Select your AI tool from the menu
+```
+
+### Issue: "AI tool not found: claude"
+
+**Cause:** Configured AI tool is not installed or not in PATH
+
+**Solution:**
+```bash
+# Install the AI tool (example for Claude)
+npm install -g @anthropic-ai/claude-cli
+
+# Or reconfigure to use a different tool
+clix config
+```
+
+### Issue: "Failed to fetch installation prompt"
+
+**Cause:** Network issues or invalid prompt URL
+
+**Solution:**
+```bash
+# Check internet connection
+# Or use a local/custom prompt URL
+clix install --prompt-url file:///path/to/local/prompt.txt
+```
+
+### Issue: "MCP server configuration failed"
+
+**Cause:** Permissions or file access issues
+
+**Solution:**
+```bash
+# Check file permissions
+ls -la ~/.clix/
+ls -la ~/.claude/
+
+# Manually create config directory if needed
+mkdir -p ~/.clix
+chmod 755 ~/.clix
+```
+
+### Issue: Command not found after npm install
+
+**Cause:** npm global bin directory not in PATH
+
+**Solution:**
+```bash
+# Find npm global bin directory
+npm config get prefix
+
+# Add to PATH in your shell config (~/.bashrc, ~/.zshrc)
+export PATH="$PATH:$(npm config get prefix)/bin"
+```
+
+## Best Practices
+
+1. **Always configure AI tool first**
+   ```bash
+   clix config  # Before using clix install
+   ```
+
+2. **Run from project root**
+   ```bash
+   cd /path/to/your/project
+   clix install  # AI can detect project structure
+   ```
+
+3. **Use version control**
+   ```bash
+   git status  # Review AI's changes
+   git diff    # Check modifications
+   git commit  # Commit when satisfied
+   ```
+
+4. **Keep CLI updated**
+   ```bash
+   npm update -g @clix-so/clix-cli
+   # Or with Homebrew
+   brew upgrade clix
+   ```
+
+5. **Provide context to AI**
+   - Be in the correct project directory
+   - Have your project files accessible
+   - Respond to AI's questions clearly
+
+## Environment Variables
+
+The CLI respects the following environment variables:
+
+- `CLIX_CONFIG_DIR` - Override config directory (default: `~/.clix`)
+- `CLIX_PROMPT_URL` - Default prompt URL for installations
+- `CLIX_DEBUG` - Enable debug logging (set to `1` or `true`)
+
+**Example:**
+```bash
+export CLIX_DEBUG=1
+clix install  # Shows detailed logs
+```
+
+## Project Structure (For Contributors)
+
+```
+src/
+├── cli.tsx              # Main entry point
+├── commands/
+│   ├── config.tsx       # Config command UI
+│   ├── install.tsx      # Install command UI
+│   └── root.tsx         # Root/welcome command
+├── lib/
+│   ├── config.ts        # Configuration management
+│   ├── executor.ts      # AI tool execution
+│   ├── llm.ts          # AI tool detection
+│   ├── mcp.ts          # MCP server setup
+│   └── prompt.ts       # Prompt fetching
+└── ui/
+    ├── components/
+    │   ├── Banner.tsx
+    │   ├── Header.tsx
+    │   ├── StatusMessage.tsx
+    │   └── ToolSelector.tsx
+    ├── ConfigUI.tsx
+    └── InstallUI.tsx
+```
+
+## API Integration
+
+### Prompt Endpoint
+
+**Default:** `https://docs.clix.so/prompts/install.txt`
+
+**Format:** Plain text with installation instructions
+
+**Example Content:**
+```
+You are helping to install the Clix Mobile SDK.
+
+For iOS projects:
+1. Add pod 'ClixSDK' to Podfile
+2. Run pod install
+3. Import ClixSDK in AppDelegate
+...
+
+For Android projects:
+1. Add implementation 'so.clix:sdk:1.0.0' to build.gradle
+2. Initialize in Application class
+...
+```
+
+### MCP Server
+
+**Endpoint:** `https://mcp.clix.so`
+
+**Purpose:** Provides AI tools with enhanced context about Clix SDK
+
+**Capabilities:**
+- SDK documentation lookup
+- API reference
+- Code examples
+- Troubleshooting guides
+
+## Version Information
+
+- **Current Version:** 1.0.0
+- **Node.js Required:** >=18.0.0
+- **License:** MIT
+- **Repository:** https://github.com/clix-so/homebrew-clix-cli
+
+## Support and Resources
+
+- **Documentation:** https://docs.clix.so
+- **GitHub Issues:** https://github.com/clix-so/homebrew-clix-cli/issues
+- **npm Package:** https://www.npmjs.com/package/@clix-so/clix-cli
+- **Clix SDK Docs:** https://clix.so
+
+## For AI Assistants
+
+When helping users with Clix CLI:
+
+1. **Always suggest `clix config` first** if user hasn't configured an AI tool
+2. **Recommend running from project root** for better context detection
+3. **Suggest specific AI tool** based on user's existing setup (check for claude, aider, etc.)
+4. **Explain that the CLI launches another AI** - it's a meta-tool
+5. **Emphasize the interactive nature** - user will chat with the launched AI
+6. **Mention MCP auto-configuration** as a key benefit
+7. **Suggest `--prompt-url` for custom installations** when needed
+8. **Remind about prerequisites** (Node.js 18+, AI tool installed)
+
+## Keywords
+
+CLI, command-line, mobile SDK, iOS, Android, AI-powered, automation, interactive terminal, React, Ink, Claude, Gemini, GPT, Aider, MCP, Model Context Protocol, push notifications, SDK integration, developer tools

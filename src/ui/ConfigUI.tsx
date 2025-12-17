@@ -19,12 +19,15 @@ export const ConfigUI: React.FC<ConfigUIProps> = ({ onComplete }) => {
   const [errorMessage, setErrorMessage] = useState<string>('');
 
   useEffect(() => {
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
     const detect = async () => {
       try {
+        await delay(800);
         const tools = await detectAvailableTools();
 
         if (tools.length === 0) {
-          setErrorMessage('No supported AI CLI tools found!');
+          setErrorMessage('No supported AI CLI tools found');
           setPhase('error');
           return;
         }
@@ -40,6 +43,7 @@ export const ConfigUI: React.FC<ConfigUIProps> = ({ onComplete }) => {
         }
 
         setAvailableTools(tools);
+        await delay(400);
         setPhase('selecting');
       } catch (error) {
         setErrorMessage(error instanceof Error ? error.message : 'Unknown error');
@@ -51,8 +55,11 @@ export const ConfigUI: React.FC<ConfigUIProps> = ({ onComplete }) => {
   }, []);
 
   const handleSelect = async (tool: CLITool) => {
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
     setPhase('saving');
     try {
+      await delay(600);
       const config = new ConfigManager();
       await config.save({ selectedCLI: tool.name });
       setCurrentTool(tool.displayName);
@@ -61,7 +68,7 @@ export const ConfigUI: React.FC<ConfigUIProps> = ({ onComplete }) => {
         onComplete();
       }, 1500);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to save config');
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to save configuration');
       setPhase('error');
     }
   };
@@ -71,14 +78,14 @@ export const ConfigUI: React.FC<ConfigUIProps> = ({ onComplete }) => {
       <Header title="Configure AI CLI Tool" />
 
       {phase === 'detecting' && (
-        <StatusMessage type="loading" message="Detecting available AI CLI tools..." />
+        <StatusMessage type="loading" message="Detecting AI CLI tools..." />
       )}
 
       {phase === 'selecting' && (
         <Box flexDirection="column">
           <StatusMessage
             type="success"
-            message={`Found ${availableTools.length} available AI CLI tool(s)`}
+            message={`Found ${availableTools.length} available tool${availableTools.length > 1 ? 's' : ''}`}
           />
           <Box marginTop={1}>
             <ToolSelector
@@ -95,25 +102,25 @@ export const ConfigUI: React.FC<ConfigUIProps> = ({ onComplete }) => {
       {phase === 'complete' && (
         <StatusMessage
           type="success"
-          message={`Successfully configured to use ${currentTool}`}
+          message={`Configured to use ${currentTool}`}
         />
       )}
 
       {phase === 'error' && (
         <Box flexDirection="column">
           <StatusMessage type="error" message={errorMessage} />
-          <Box marginTop={1}>
-            <Text color="gray">Supported tools:</Text>
+          <Box marginTop={1} marginBottom={1}>
+            <Text dimColor>Supported AI CLI tools:</Text>
           </Box>
           {SUPPORTED_TOOLS.map((tool) => (
-            <Text key={tool.name} color="gray">
-              {'  '}• {tool.displayName} ({tool.command})
-            </Text>
+            <Box key={tool.name} marginLeft={2}>
+              <Text dimColor>  </Text>
+              <Text>{tool.displayName}</Text>
+              <Text dimColor> - {tool.command}</Text>
+            </Box>
           ))}
           <Box marginTop={1}>
-            <Text color="yellow">
-              Please install one of the supported AI CLI tools and try again.
-            </Text>
+            <Text dimColor>Install one of these tools and try again.</Text>
           </Box>
         </Box>
       )}
