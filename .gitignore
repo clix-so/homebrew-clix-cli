@@ -15,6 +15,7 @@
 
 # Dependency directories (remove the comment below if you use vendoring)
 /vendor/
+node_modules/
 
 # Go build artifacts
 /build/

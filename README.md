@@ -1,79 +1,172 @@
-# clix
+# Clix CLI
 
-A command-line tool for integrating and managing the Clix SDK in your mobile projects. Clix SDK provides robust support for app push notifications and related features. This CLI helps automate installation, configuration checks, and (soon) uninstallation for both iOS and Android projects.
+A command-line tool for integrating and managing the Clix SDK in your mobile projects. Clix SDK provides robust support for app push notifications and related features. This CLI uses AI-powered assistants to automate installation and configuration.
 
-## Getting Started
+## ✨ Features
 
-### Install via Homebrew (Recommended)
-```sh
-brew tap clix-so/clix-cli
-brew install clix-so/clix-cli/clix
+- 🤖 **AI-Powered Installation**: Uses AI assistants (Claude, Gemini, GPT, or Aider) to guide SDK installation
+- 🎨 **Beautiful UI**: Built with [Ink](https://github.com/vadimdemedes/ink) for a modern, professional CLI experience
+- 📱 **Multi-Platform**: Supports iOS and Android projects
+- 🔌 **MCP Integration**: Automatic setup of Clix MCP Server for enhanced AI capabilities
+- 💡 **Interactive**: Guided workflows with clear visual feedback
+
+## 📦 Installation
+
+### Install via npm (Recommended)
+
+```bash
+npm install -g @clix-so/clix-cli
 ```
 
-### Install via Source
-```sh
-git clone https://github.com/clix-so/homebrew-clix-cli.git
-cd homebrew-clix-cli
-make install
+### Install via pnpm
+
+```bash
+pnpm add -g @clix-so/clix-cli
 ```
 
-## Requirements
-- For iOS: Xcode project in the current directory
+### Install via yarn
 
-
-## Features
-
-- **Install Clix SDK**
-    - iOS (via Swift Package Manager or CocoaPods)
-      - Auto-configures App Groups and NotificationServiceExtension
-    - Android (via Gradle)
-- **Doctor (Integration Checker)**
-    - iOS: Checks your Xcode project for all required Clix SDK and push notification settings, and provides step-by-step guidance for any issues found.
-    - Android: Checks your Android project for all required Clix SDK and push notification settings, and provides step-by-step guidance for any issues found.
-- **Uninstall Clix SDK**
-
-## Commands
-
-### `install`
-Install the Clix SDK into your project.
-
+```bash
+yarn global add @clix-so/clix-cli
 ```
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js 18 or higher
+- One of the supported AI CLI tools:
+  - [Claude CLI](https://claude.ai/cli)
+  - [Google Gemini CLI](https://ai.google.dev/gemini-api)
+  - [OpenAI GPT CLI](https://platform.openai.com/)
+  - [Aider](https://github.com/paul-gauthier/aider)
+
+### Quick Start
+
+1. **Configure your AI CLI tool** (first time only):
+
+```bash
+clix config
+```
+
+The CLI will detect available AI tools and let you choose one.
+
+2. **Install the Clix SDK**:
+
+```bash
 clix install
 ```
 
-#### iOS Specific Options
+The AI assistant will guide you through the installation process!
 
-```
-clix install --verbose         # Show verbose output during installation
-clix install --dry-run         # Show what would be changed without making changes
-```
+## 📖 Commands
 
-During iOS installation, the CLI will automatically:
-1. Install the Clix SDK using SPM or CocoaPods
-2. Configure App Groups for your main app and NotificationServiceExtension
-3. Add the Clix framework to your NotificationServiceExtension target
+### `clix install`
 
-### `doctor`
-Check that your project is correctly set up for push notifications and Clix SDK integration. Provides detailed diagnostics and suggestions for fixing any issues.
+Install the Clix SDK into your project using AI assistance.
 
-```
-clix doctor
+```bash
+clix install
+
+# Use a custom installation prompt
+clix install --prompt-url https://example.com/custom-prompt.txt
 ```
 
-### `uninstall`
-Remove the Clix SDK from your project.
+**Options:**
+- `-p, --prompt-url <url>` - Custom URL for the installation prompt
+
+### `clix config`
+
+Configure which AI CLI tool to use for installations.
+
+```bash
+clix config
+```
+
+This will:
+- Detect available AI CLI tools on your system
+- Show your current selection (if any)
+- Let you choose or change your preferred tool
+
+### `clix` (no command)
+
+Show welcome message and available commands.
+
+```bash
+clix
+```
+
+## 🎯 How It Works
+
+1. **Configuration**: Clix detects and saves your preferred AI CLI tool
+2. **MCP Setup**: Automatically configures the Clix MCP Server for enhanced capabilities
+3. **Prompt Fetching**: Downloads the latest installation instructions
+4. **AI Execution**: Launches your chosen AI assistant with the installation prompt
+5. **Guided Installation**: The AI guides you through the entire SDK setup
+
+## 🛠️ Development
+
+### Prerequisites
+
+- Node.js 18+
+- npm or pnpm
+
+### Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/clix-so/homebrew-clix-cli.git
+cd homebrew-clix-cli
+
+# Install dependencies
+npm install
+
+# Build
+npm run build
+
+# Run locally
+node dist/cli.js
+```
+
+### Project Structure
 
 ```
-clix uninstall
+src/
+├── cli.tsx              # Main CLI entry point
+├── commands/            # Command implementations
+│   ├── config.tsx       # Config command
+│   ├── install.tsx      # Install command
+│   └── root.tsx         # Root command (welcome)
+├── lib/                 # Core functionality
+│   ├── config.ts        # Configuration management
+│   ├── executor.ts      # AI tool execution
+│   ├── llm.ts           # AI tool detection
+│   ├── mcp.ts           # MCP server management
+│   └── prompt.ts        # Prompt fetching
+└── ui/                  # Ink UI components
+    ├── components/      # Reusable UI components
+    │   ├── Banner.tsx
+    │   ├── Header.tsx
+    │   ├── StatusMessage.tsx
+    │   └── ToolSelector.tsx
+    ├── ConfigUI.tsx     # Config screen
+    └── InstallUI.tsx    # Install screen
 ```
 
-## Contributing
-Pull requests and issues are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for details (to be added).
+## 🤝 Contributing
 
-## License
+Pull requests and issues are welcome!
+
+## 📄 License
+
 MIT
+
+## 🔗 Links
+
+- [GitHub Repository](https://github.com/clix-so/homebrew-clix-cli)
+- [Issue Tracker](https://github.com/clix-so/homebrew-clix-cli/issues)
+- [Clix SDK Documentation](https://clix.so)
 
 ---
 
-> **Note:**
-> - For any issues or feature requests, please open an issue on GitHub.
+Made with ❤️ by the Clix team
