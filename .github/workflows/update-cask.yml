@@ -12,7 +12,16 @@ jobs:
   update-cask:
     runs-on: ubuntu-latest
     steps:
+      - name: Generate token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.CLIX_CLI_ACTION_APP_ID }}
+          private-key: ${{ secrets.CLIX_CLI_ACTION_PRIVATE_KEY }}
+
       - uses: actions/checkout@v4
+        with:
+          token: ${{ steps.generate-token.outputs.token }}
 
       - name: Download checksums
         run: |
@@ -38,6 +47,6 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Casks/clix.rb
           git commit -m "chore: update clix to v${{ inputs.version }}"
-          git tag "v${{ inputs.version }}"
+          git tag -f "v${{ inputs.version }}"
           git push
-          git push origin "v${{ inputs.version }}"
+          git push -f origin "v${{ inputs.version }}"
