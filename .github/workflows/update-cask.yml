@@ -1,0 +1,41 @@
+name: Update Cask Version
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to update (e.g., 1.0.0)"
+        required: true
+        type: string
+
+jobs:
+  update-cask:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download checksums
+        run: |
+          curl -sL "https://github.com/clix-so/clix-cli/releases/download/v${{ inputs.version }}/checksums.sha256" -o checksums.sha256
+
+      - name: Extract SHA256 hashes
+        id: hashes
+        run: |
+          ARM64_SHA=$(grep "clix-darwin-arm64$" checksums.sha256 | cut -d ' ' -f 1)
+          X64_SHA=$(grep "clix-darwin-x64$" checksums.sha256 | cut -d ' ' -f 1)
+          echo "arm64=$ARM64_SHA" >> $GITHUB_OUTPUT
+          echo "x64=$X64_SHA" >> $GITHUB_OUTPUT
+
+      - name: Update Casks/clix.rb
+        run: |
+          sed -i 's/version ".*"/version "${{ inputs.version }}"/' Casks/clix.rb
+          sed -i '/on_arm do/,/end/{s/sha256 ".*"/sha256 "${{ steps.hashes.outputs.arm64 }}"/}' Casks/clix.rb
+          sed -i '/on_intel do/,/end/{s/sha256 ".*"/sha256 "${{ steps.hashes.outputs.x64 }}"/}' Casks/clix.rb
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/clix.rb
+          git commit -m "chore: update clix to v${{ inputs.version }}"
+          git push
