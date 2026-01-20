@@ -1,13 +1,13 @@
 cask "clix" do
-  version "1.1.0"
+  version "1.1.1"
 
   on_arm do
     url "https://github.com/clix-so/clix-cli/releases/download/v#{version}/clix-darwin-arm64"
-    sha256 "57c4bd227b40e4f66aea5f8e47a8d429cbfe56e8f76cf2a5008be05a2b6aba24"
+    sha256 "b4ceea0a8701255368d4e87b513b166984c11eab196580948382dcf43c0002b5"
   end
   on_intel do
     url "https://github.com/clix-so/clix-cli/releases/download/v#{version}/clix-darwin-x64"
-    sha256 "c4397e608c7f98d2e542a1ad40546caf282d28c2951aa32cac145fc6cdf5f856"
+    sha256 "24849313cf8a3ee6a0b550993787ea41d812b887e47c47396538b24ceb5740da"
   end
 
   name "Clix CLI"
