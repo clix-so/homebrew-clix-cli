@@ -16,6 +16,17 @@ cask "clix" do
 
   binary "clix-darwin-#{Hardware::CPU.arch}", target: "clix"
 
+  postflight do
+    system_command "/usr/bin/xattr",
+      args: ["-d", "com.apple.quarantine", "#{staged_path}/clix-darwin-#{Hardware::CPU.arch}"],
+      sudo: false
+  end
+
+  caveats <<~EOS
+    This cask installs an unsigned binary. If you encounter issues, run:
+      xattr -d com.apple.quarantine $(which clix)
+  EOS
+
   zap trash: [
     "~/.config/clix",
     "~/.local/state/clix",
